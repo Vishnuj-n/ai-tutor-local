@@ -94,7 +94,7 @@ Implementation note for Sprint 2:
 | S2-TC-004 | Document registration | Integration | Notebook exists | Call RegisterDocument | Document stored with status=pending and SHA256 hash |
 | S2-TC-005 | Chunking window behavior | Unit | chunker max=400 overlap=50 | Chunk long sample text | Chunks generated with overlap and tagged prefix |
 | S2-TC-006 | Sync queue insert | Integration | Valid event payload | Enqueue event | Row added in sync_queue with pending status |
-| S2-TC-007 | Embedding request contract | Unit | Mock Ollama endpoint | Call EmbedText | Request uses model nomic-embed-text and decodes embeddings |
+| S2-TC-007 | Embedding runtime contract | Unit | ONNX model file available | Run embedding flow | ONNX `model_int8.onnx` is used with expected 768-dim output |
 | S2-TC-008 | Runtime health guard | Integration | Missing FTS5/sqlite-vec | Run app startup | Fails gracefully with actionable error message |
 
 ### Mini Test Case Status Snapshot
@@ -105,7 +105,7 @@ Implementation note for Sprint 2:
 - S2-TC-004: Satisfied (document registration flow implemented and available).
 - S2-TC-005: Satisfied (chunking behavior implemented in chunker logic).
 - S2-TC-006: Satisfied (sync enqueue flow implemented).
-- S2-TC-007: Satisfied (embedding client contract implemented for Ollama `/api/embed`; vec persistence wired when vec is enabled).
+- S2-TC-007: Satisfied (embedding runtime contract aligned to ONNX `model_int8.onnx`; vec persistence wired when vec is enabled).
 - S2-TC-008: Satisfied (actionable startup guard implemented for missing modules).
 
 ## Command Reference (Compile and Run)

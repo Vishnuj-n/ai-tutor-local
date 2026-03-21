@@ -76,7 +76,7 @@ CREATE VIRTUAL TABLE chunks_fts USING fts5(
 ```sql
 CREATE VIRTUAL TABLE embeddings USING vec0(
   chunk_rowid INTEGER PRIMARY KEY, -- Maps to chunks.rowid (implicit rowid)
-  embedding   float[768]           -- nomic-embed-text output dimension
+  embedding   float[768]           -- ONNX model_int8.onnx output dimension
 );
 ```
 
@@ -192,8 +192,10 @@ CREATE TABLE student_config (
 -- 'class_id'     → cloud class UUID (set after joining)
 -- 'class_code'   → last joined class code
 -- 'llm_mode'     → 'local' | 'api'
--- 'api_key'      → encrypted API key (if API mode)
+-- 'api_key_ref'  → optional secure keychain reference (never raw API key)
 -- 'api_provider' → 'openai' | 'gemini' | 'anthropic'
+-- 'embedding_mode'  → 'onnx'
+-- 'onnx_model_path' → 'onnx/model_int8.onnx'
 ```
 
 ---

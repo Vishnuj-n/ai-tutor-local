@@ -148,8 +148,9 @@ const (
 	ConfigClassID       = "class_id"
 	ConfigClassCode     = "class_code"
 	ConfigLLMMode       = "llm_mode"       // 'local' | 'api'
-	ConfigAPIKey        = "api_key"        // encrypted
+	ConfigAPIKeyRef     = "api_key_ref"    // optional keychain/vault reference only; never store raw API key
 	ConfigAPIProvider   = "api_provider"   // 'openai' | 'gemini' | 'anthropic'
-	ConfigEmbeddingMode = "embedding_mode" // always 'ollama'
+	ConfigEmbeddingMode = "embedding_mode" // always 'onnx'
+	ConfigONNXModelPath = "onnx_model_path"
 	ConfigOllamaURL     = "local_ollama_url"
 )

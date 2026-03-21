@@ -10,10 +10,10 @@
 
 1. App launches → SQLite DB initializes automatically (zero setup required).
 2. Onboarding screen: Enter **Student Name** + **USN** (stored locally; used in analytics payload).
-3. **LLM Mode selection:** Choose Local Mode (requires Ollama running locally) or API Mode (enter API key).
-   - **Important:** Embeddings are ALWAYS generated locally via Ollama (`nomic-embed-text`), regardless of this choice.
+3. **LLM Mode selection:** Choose Local Mode (requires Ollama running locally) or API Mode (enter API key for current session).
+   - **Important:** Embeddings are ALWAYS generated locally via ONNX (`onnx/model_int8.onnx`), regardless of this choice.
    - This choice only affects text generation (flashcard & quiz generation, Q&A).
-   - If you select API Mode but Ollama is not running, the app will show an error and prompt you to start Ollama or switch modes.
+   - API keys are not stored in `student_config`; only in-memory/session use or secure OS keychain reference is allowed.
 4. If Local Mode selected and Ollama is not detected → Show warning + prompt to switch to API Mode.
 5. User lands on **Home Dashboard**.
 
@@ -38,7 +38,7 @@ Displays at a glance:
    - Detect chapter/heading boundaries via structure parsing
    - Semantically chunk the document (300–500 tokens, 50-token overlap)
    - Prepend each chunk: `[NotebookName - HeadingName] chunk text...`
-   - Generate embeddings via Ollama (`nomic-embed-text`) → store in `sqlite-vec`
+   - Generate embeddings via local ONNX model (`onnx/model_int8.onnx`) → store in `sqlite-vec`
    - Index chunk plain text in FTS5 virtual table
 4. UI shows a progress indicator (% of pages processed). Student can do other tasks during this.
 5. On completion → notification: *"Document ready. Generating study materials..."*

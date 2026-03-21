@@ -80,7 +80,7 @@ END;
 -- Note: Requires sqlite-vec extension loaded before table creation
 CREATE VIRTUAL TABLE IF NOT EXISTS embeddings USING vec0(
   chunk_rowid INTEGER PRIMARY KEY, -- Maps to chunks.rowid (implicit rowid)
-  embedding   float[768]           -- nomic-embed-text output dimension
+  embedding   float[768]           -- ONNX model_int8.onnx output dimension
 );
 
 -- ============================================================================
@@ -186,5 +186,6 @@ CREATE TABLE IF NOT EXISTS student_config (
 );
 
 -- Insert default initial config values
-INSERT OR IGNORE INTO student_config (key, value) VALUES ('embedding_mode', 'ollama');
+INSERT OR IGNORE INTO student_config (key, value) VALUES ('embedding_mode', 'onnx');
+INSERT OR IGNORE INTO student_config (key, value) VALUES ('onnx_model_path', 'onnx/model_int8.onnx');
 INSERT OR IGNORE INTO student_config (key, value) VALUES ('local_ollama_url', 'http://localhost:11434');

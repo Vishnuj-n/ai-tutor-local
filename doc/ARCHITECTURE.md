@@ -31,7 +31,7 @@ The project lives in two independent repositories that communicate through the v
 
 | Repo | Owner | Tech Stack | Purpose |
 |---|---|---|---|
-| `ai-tutor-local` | Developer A | Go, Wails, SQLite, sqlite-vec, Ollama | Local desktop app |
+| `ai-tutor-local` | Developer A | Go, Wails, SQLite, sqlite-vec, ONNX Runtime, Ollama | Local desktop app |
 | `ai-tutor-cloud` | Developer B | Node.js, PostgreSQL, React, Tailwind | Cloud API + teacher dashboard |
 
 ---
@@ -43,7 +43,7 @@ The project lives in two independent repositories that communicate through the v
 | Module | Responsibility |
 |---|---|
 | `ingestion` | PDF parsing (pdfcpu), chapter detection, semantic chunking, overlap |
-| `embedding` | Calls Ollama `/api/embed` with `nomic-embed-text`; stores float32 vectors in sqlite-vec |
+| `embedding` | Runs local ONNX embedding model (`onnx/model_int8.onnx`); stores float32 vectors in sqlite-vec |
 | `retrieval` | Hybrid search (sqlite-vec ANN + FTS5 BM25), HyDE query expansion, optional reranker |
 | `generation` | LLM orchestration — routes to Ollama (Local) or OpenAI/Gemini/Anthropic (API); flashcard + quiz gen |
 | `fsrs` | Pure Go FSRS-4.5 algorithm; manages stability, difficulty, retrievability per card |
@@ -72,24 +72,25 @@ All LLM calls are routed through a single `LLMClient` interface in Go — adding
 
 **Architecture Decision: Option A (Mandatory)**
 
-Embedding and text-generation models are **decoupled**. This system uses **local embeddings only** (Ollama `nomic-embed-text`, 768 dimensions) regardless of the generation mode.
+Embedding and text-generation models are **decoupled**. This system uses **local embeddings only** (ONNX `onnx/model_int8.onnx`, 768 dimensions) regardless of the generation mode.
 
 **Why Decoupling is Non-Negotiable:**
 
-- `nomic-embed-text` (768-dim) is hardcoded in the `sqlite-vec` schema
+- `onnx/model_int8.onnx` (768-dim) is hardcoded in the `sqlite-vec` schema
 - OpenAI's `text-embedding-3-small` outputs 1536 dimensions, which will cause a hard crash when inserted into the 768-dim vector column
 - Switching embedding models per-provider would require dynamic schema changes (impossible at runtime)
 - Privacy: Local embeddings ensure sensitive study content never leaves the student's machine
 
 **Rule:**
-- ✅ **ALWAYS use Ollama (`localhost:11434`) for embeddings**, even in API mode
+- ✅ **ALWAYS use local ONNX embedding runtime with `onnx/model_int8.onnx`**, even in API mode
 - ❌ **NEVER attempt to use cloud embedding APIs** (OpenAI embed, Gemini embed, etc.)
 - Text generation CAN use either Local (Ollama) or API mode (OpenAI/Gemini/Anthropic)
 
 **Configuration in `student_config`:**
 ```
 'llm_mode'         → 'local' | 'api'       (applies ONLY to generation)
-'embedding_mode'   → always 'ollama'       (immutable; never changes)
+'embedding_mode'   → always 'onnx'         (immutable; never changes)
+'onnx_model_path'  → 'onnx/model_int8.onnx'
 ```
 
 This separation prevents the dimensional mismatch that would corrupt the vector store.
@@ -107,7 +108,7 @@ ChunkingService → semantic chunks (300–500 tokens, 50-token overlap)
     │
 Tag each chunk: "[NotebookName - HeadingName] chunk text..."
     │
-EmbeddingService → Ollama embed → float32[] stored in sqlite-vec
+EmbeddingService → ONNX embed (`onnx/model_int8.onnx`) → float32[] stored in sqlite-vec
     │
 FTS5 virtual table indexed with chunk plain text
     │
@@ -173,7 +174,7 @@ ai-tutor-local/
   cmd/                  # Main entry point (main.go)
   internal/
     ingestion/          # PDF parsing, chunking, chapter detection
-    embedding/          # Ollama embed API calls
+    embedding/          # ONNX embedding runtime integration
     retrieval/          # Hybrid search, HyDE, reranker
     generation/         # LLM orchestration, flashcard/quiz gen
     fsrs/               # FSRS-4.5 algorithm implementation

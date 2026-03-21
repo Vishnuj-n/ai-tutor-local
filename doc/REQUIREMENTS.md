@@ -29,7 +29,7 @@ The **AI Tutoring & Classroom Analytics System** is a hybrid educational platfor
 ### 3.1 Document Ingestion & AI Generation (Local)
 
 - **REQ-1.1** The system shall allow users to upload PDF, TXT, and Markdown files into subject-specific Notebooks.
-- **REQ-1.2** The system shall parse, semantically chunk (preserving heading boundaries), and embed uploaded documents using a local embedding model (`nomic-embed-text` via Ollama).
+- **REQ-1.2** The system shall parse, semantically chunk (preserving heading boundaries), and embed uploaded documents using a local ONNX embedding model (`onnx/model_int8.onnx`).
 - **REQ-1.3** The system shall automatically generate flashcards, MCQ quizzes, and descriptive prompts from document chunks using the selected LLM. No manual creation required.
 - **REQ-1.4** All generated artifacts shall maintain a bidirectional reference to the originating document chunk, enabling click-through navigation back to the source paragraph.
 
@@ -88,7 +88,7 @@ The **AI Tutoring & Classroom Analytics System** is a hybrid educational platfor
 |---|---|---|
 | Max PDF size (Phase 1) | ~500 pages / ~50MB | Prevent memory overload on low-spec laptops |
 | LLM Mode | Local (Ollama) or API (OpenAI/Gemini/Anthropic) | One mode active at a time, user-selectable |
-| Embedding Model | `nomic-embed-text` via Ollama | Best local quality/speed tradeoff |
+| Embedding Model | `onnx/model_int8.onnx` via local ONNX Runtime | Stable local inference, no network dependency |
 | Local DB | SQLite + sqlite-vec + FTS5 | Single file, zero-config, portable |
 | Cloud DB | PostgreSQL | Relational, queryable analytics store |
 | Sync Frequency | Event-based + every 15 min | Balance freshness vs. bandwidth |

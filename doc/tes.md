@@ -28,7 +28,7 @@ This document defines the complete test suite for:
 - OS: Windows 11, Ubuntu 22.04, macOS
 - Local DB: SQLite with FTS5 and sqlite-vec enabled
 - Cloud DB: PostgreSQL 14+
-- Local LLM: Ollama running with nomic-embed-text
+- Local embedding runtime: ONNX model (`onnx/model_int8.onnx`)
 - API providers for generation mode: OpenAI, Gemini, Anthropic (generation only)
 - Network modes: Online, offline, unstable high-latency
 
@@ -48,7 +48,7 @@ This document defines the complete test suite for:
 
 | ID | Test Case | Precondition | Steps | Expected Result |
 |---|---|---|---|---|
-| UT-EMB-001 | Embed request uses nomic model | Mock Ollama client | Embed text | Request model == nomic-embed-text |
+| UT-EMB-001 | ONNX model path validation | ONNX model file present | Load embedding runtime | Model path resolves to onnx/model_int8.onnx |
 | UT-EMB-002 | Embed dimension validation | Mock response vector | Validate vector length | Length must be exactly 768 |
 | UT-EMB-003 | Non-200 API response handling | Ollama returns 500 | Embed text | Error returned with status info |
 | UT-EMB-004 | Timeout handling | Ollama delayed response | Embed text with timeout | Proper timeout error |

@@ -8,7 +8,7 @@
 
 | Track | Owner | Deliverable | Tech Stack |
 |---|---|---|---|
-| Track A — Local App | Vishnu | Go/Wails desktop app with RAG, FSRS, and sync | Go, Wails, SQLite, sqlite-vec, Ollama |
+| Track A — Local App | Vishnu | Go/Wails desktop app with RAG, FSRS, and sync | Go, Wails, SQLite, sqlite-vec, ONNX Runtime, Ollama |
 | Track B — Cloud | Friend | REST API + React teacher dashboard | Node.js, PostgreSQL, React, Tailwind |
 
 Both tracks can proceed in parallel once `DATA_API.md` and `SCHEMA.md` are finalized. The API contract is the only hard dependency between the two tracks.
@@ -21,7 +21,7 @@ Both tracks can proceed in parallel once `DATA_API.md` and `SCHEMA.md` are final
 
 ### In Scope
 
-- PDF upload, text extraction, semantic chunking, embedding (`nomic-embed-text` via Ollama)
+- PDF upload, text extraction, semantic chunking, embedding (local ONNX model: `onnx/model_int8.onnx`)
 - SQLite + `sqlite-vec` for vector storage + FTS5 for keyword search
 - Hybrid retrieval (vector + BM25) with HyDE query expansion
 - LLM orchestration: Local Mode (Ollama) and API Mode (OpenAI/Gemini/Anthropic)
@@ -83,7 +83,7 @@ Both tracks can proceed in parallel once `DATA_API.md` and `SCHEMA.md` are final
 | Knowledge Graph | SKIP (Phase 3) | Too slow on local LLMs; scope risk for final year |
 | Local backend language | Go only | Single binary, zero deploy overhead |
 | Cloud backend language | Node.js | Friend's preference; good ecosystem for REST APIs |
-| Embedding model | `nomic-embed-text` (Ollama) | Best local quality/speed tradeoff |
+| Embedding model | `onnx/model_int8.onnx` (local ONNX Runtime) | Fixed local model, privacy-safe, predictable dimensions |
 | Vector storage | `sqlite-vec` | No extra dependency; same SQLite file |
 | Keyword search | SQLite FTS5 (BM25) | Built-in, zero-config |
 | Reranker | Optional cross-encoder (local) | Phase 1 may skip; Phase 2 adds it |
