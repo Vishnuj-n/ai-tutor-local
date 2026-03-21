@@ -10,12 +10,13 @@
 
 1. App launches → SQLite DB initializes automatically (zero setup required).
 2. Onboarding screen: Enter **Student Name** + **USN** (stored locally; used in analytics payload).
-3. **LLM Mode selection:** Choose Local Mode (requires Ollama running locally) or API Mode (enter API key for current session).
+3. **LLM Provider selection:** Choose API provider (OpenAI, Groq, Gemini, OpenRouter) and set OpenAI-compatible `base_url` + API key for current session.
    - **Important:** Embeddings are ALWAYS generated locally via ONNX (`onnx/model_int8.onnx`), regardless of this choice.
    - This choice only affects text generation (flashcard & quiz generation, Q&A).
    - API keys are not stored in `student_config`; only in-memory/session use or secure OS keychain reference is allowed.
-4. If Local Mode selected and Ollama is not detected → Show warning + prompt to switch to API Mode.
-5. User lands on **Home Dashboard**.
+4. Local Ollama mode is planned for a later sprint and is currently disabled by default.
+5. If provider validation fails (invalid key/base URL) → show inline error and block generation until corrected.
+6. User lands on **Home Dashboard**.
 
 ---
 
@@ -134,7 +135,8 @@ Displays at a glance:
 | Scenario | System Behavior |
 |---|---|
 | PDF upload fails (corrupt file) | Show error toast. Allow re-upload. App does not crash. |
-| Ollama not running (Local Mode) | Dialog: "Ollama not detected. Switch to API Mode?" |
+| Provider endpoint unreachable | Inline warning with retry action and provider/base URL troubleshooting hint |
+| Ollama not running (when local mode ships) | Dialog: "Ollama not detected. Switch to API Mode?" |
 | API key invalid (API Mode) | Inline error on key entry. Do not proceed. |
 | Sync fails (offline) | Queue payload in `sync_queue`. Retry on next connection. No user disruption. |
 | LLM generates hallucinated flashcard | Fact-check against source chunks. Flag/discard if key facts absent from context. |

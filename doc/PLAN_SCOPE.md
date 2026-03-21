@@ -8,7 +8,7 @@
 
 | Track | Owner | Deliverable | Tech Stack |
 |---|---|---|---|
-| Track A — Local App | Vishnu | Go/Wails desktop app with RAG, FSRS, and sync | Go, Wails, SQLite, sqlite-vec, ONNX Runtime, Ollama |
+| Track A — Local App | Vishnu | Go/Wails desktop app with RAG, FSRS, and sync | Go, Wails, SQLite, sqlite-vec, ONNX Runtime, Ollama (planned later) |
 | Track B — Cloud | Friend | REST API + React teacher dashboard | Node.js, PostgreSQL, React, Tailwind |
 
 Both tracks can proceed in parallel once `DATA_API.md` and `SCHEMA.md` are finalized. The API contract is the only hard dependency between the two tracks.
@@ -24,7 +24,7 @@ Both tracks can proceed in parallel once `DATA_API.md` and `SCHEMA.md` are final
 - PDF upload, text extraction, semantic chunking, embedding (local ONNX model: `onnx/model_int8.onnx`)
 - SQLite + `sqlite-vec` for vector storage + FTS5 for keyword search
 - Hybrid retrieval (vector + BM25) with HyDE query expansion
-- LLM orchestration: Local Mode (Ollama) and API Mode (OpenAI/Gemini/Anthropic)
+- LLM orchestration: OpenAI-compatible API mode now (OpenAI/Groq/Gemini/OpenRouter), local Ollama mode deferred
 - Automatic flashcard generation from document chunks (no manual creation)
 - FSRS scheduling: stability, difficulty, retrievability tracking per card
 - Basic Wails UI: Notebook view, document reader, flashcard review, Q&A interface

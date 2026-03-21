@@ -191,9 +191,10 @@ CREATE TABLE student_config (
 -- 'usn'          → university seat number
 -- 'class_id'     → cloud class UUID (set after joining)
 -- 'class_code'   → last joined class code
--- 'llm_mode'     → 'local' | 'api'
+-- 'llm_mode'     → 'api' (OpenAI-compatible generation mode)
 -- 'api_key_ref'  → optional secure keychain reference (never raw API key)
--- 'api_provider' → 'openai' | 'gemini' | 'anthropic'
+-- 'api_provider' → 'openai' | 'groq' | 'gemini' | 'openrouter'
+-- 'api_base_url' → provider OpenAI-compatible base URL
 -- 'embedding_mode'  → 'onnx'
 -- 'onnx_model_path' → 'onnx/model_int8.onnx'
 ```

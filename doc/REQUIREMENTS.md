@@ -87,7 +87,7 @@ The **AI Tutoring & Classroom Analytics System** is a hybrid educational platfor
 | Constraint | Value | Rationale |
 |---|---|---|
 | Max PDF size (Phase 1) | ~500 pages / ~50MB | Prevent memory overload on low-spec laptops |
-| LLM Mode | Local (Ollama) or API (OpenAI/Gemini/Anthropic) | One mode active at a time, user-selectable |
+| LLM Mode | API-first via OpenAI-compatible protocol; Local Ollama mode deferred | Supports OpenAI/Groq/Gemini/OpenRouter using provider base URL + API key; local mode to be re-enabled in later sprint |
 | Embedding Model | `onnx/model_int8.onnx` via local ONNX Runtime | Stable local inference, no network dependency |
 | Local DB | SQLite + sqlite-vec + FTS5 | Single file, zero-config, portable |
 | Cloud DB | PostgreSQL | Relational, queryable analytics store |

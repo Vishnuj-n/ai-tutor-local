@@ -222,9 +222,15 @@ Status: Completed on 2026-03-21.
   - Wails GUI is **not implemented yet** in this repository.
   - `frontend/` currently has no UI scaffold and no Wails app bootstrap files are present.
 - Planned implementation window:
-  - Start in Sprint 4 (immediately after backend Sprint 3 completion).
+  - Start in Sprint 4 (immediately after backend sync stabilization baseline).
   - Sprint 4 target: bootstrap Wails app shell + core screens for Notebook list, document ingestion status, due cards/review flow, and sync status.
   - Sprint 5 target: polish, UX hardening, and end-to-end desktop packaging.
+
+### Sprint 4 Wails Start Window (Committed)
+
+- Frontend bootstrap starts: **2026-03-22**
+- First runnable Wails shell target: **2026-03-23**
+- Initial screens target (notebook list + ingestion status + due cards): **2026-03-24 to 2026-03-26**
 
 ## Sprint 4 Kickoff (2026-03-21)
 
@@ -241,6 +247,8 @@ Status: Completed on 2026-03-21.
 - Add sync queue dedup key strategy for idempotent cloud aggregation.
 - Add retry backoff policy and max-attempt state transitions in sync worker.
 - Add dashboard consistency checks (local aggregated counters vs queued events).
+- Standardize generation path to OpenAI-compatible API client for OpenAI/Groq/Gemini/OpenRouter (`base_url` + API key).
+- Keep local Ollama generation mode as deferred roadmap item and re-enable in a later sprint (after API-path stabilization).
 
 ## Sprint 2 Delta (Completed in this pass)
 

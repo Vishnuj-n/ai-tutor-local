@@ -173,25 +173,25 @@ func initONNXRuntime() error {
 func newIntTensorForType(dataType ort.TensorElementDataType, shape ort.Shape, data []int64) (ort.Value, error) {
 	switch dataType {
 	case ort.TensorElementDataTypeInt64:
-		return ort.NewTensor[int64](shape, data)
+		return ort.NewTensor(shape, data)
 	case ort.TensorElementDataTypeInt32:
 		converted := make([]int32, len(data))
 		for i := range data {
 			converted[i] = int32(data[i])
 		}
-		return ort.NewTensor[int32](shape, converted)
+		return ort.NewTensor(shape, converted)
 	case ort.TensorElementDataTypeInt16:
 		converted := make([]int16, len(data))
 		for i := range data {
 			converted[i] = int16(data[i])
 		}
-		return ort.NewTensor[int16](shape, converted)
+		return ort.NewTensor(shape, converted)
 	case ort.TensorElementDataTypeInt8:
 		converted := make([]int8, len(data))
 		for i := range data {
 			converted[i] = int8(data[i])
 		}
-		return ort.NewTensor[int8](shape, converted)
+		return ort.NewTensor(shape, converted)
 	default:
 		return nil, fmt.Errorf("unsupported integer tensor datatype: %s", dataType.String())
 	}

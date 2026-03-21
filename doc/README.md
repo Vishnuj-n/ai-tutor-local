@@ -36,8 +36,9 @@
 | Component | Technology |
 |---|---|
 | Desktop Framework | Go + Wails (native WebView) |
-| AI Inference (Local) | ONNX embeddings (`onnx/model_int8.onnx`) + Ollama generation (optional) |
-| AI Inference (API) | OpenAI / Google Gemini / Anthropic Claude |
+| AI Inference (Local) | ONNX embeddings (`onnx/model_int8.onnx`) |
+| AI Inference (Generation) | OpenAI-compatible Chat Completions client (OpenAI, Groq, Gemini, OpenRouter via `base_url`) |
+| AI Inference (Generation, Planned Later) | Optional local Ollama mode (deferred) |
 | Local Database | SQLite + sqlite-vec + FTS5 |
 | Cloud API | Node.js (Express / Fastify) |
 | Cloud Database | PostgreSQL |
@@ -68,7 +69,10 @@
 ```bash
 # Prerequisites
 # Install Go 1.22+, Wails CLI
-# Optional for local generation mode: install Ollama and pull a generation model (e.g., llama3)
+# Configure generation provider using OpenAI-compatible env vars (examples)
+# GROQ_API_KEY=...
+# GROQ_BASE_URL=https://api.groq.com/openai/v1
+# Optional later: local Ollama mode will be re-enabled in a future sprint
 
 # Embedding model is local ONNX file committed in repo
 # onnx/model_int8.onnx
@@ -116,7 +120,7 @@ npm run dev
 
 **No Knowledge Graph in Phase 1/2** — Local LLMs are not reliable enough for consistent entity extraction on dense study material. Hybrid search (vector + BM25) + HyDE delivers strong retrieval without the complexity or latency.
 
-**Go over Python for local app** — Go compiles to a single binary. Python packaging (PyInstaller) adds gigabytes and startup latency. ONNX Runtime handles local embeddings, while Ollama can be used for local text generation.
+**Go over Python for local app** — Go compiles to a single binary. Python packaging (PyInstaller) adds gigabytes and startup latency. ONNX Runtime handles local embeddings, and generation currently uses a single OpenAI-compatible API client while optional Ollama mode remains planned.
 
 **API key handling** — Raw API keys are not persisted in `student_config`. Use process environment variables or OS keychain/vault references only.
 

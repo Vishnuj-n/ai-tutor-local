@@ -19,8 +19,8 @@ Student Machine                          Cloud
   │  + FTS5             │             PostgreSQL
   └──────┬──────────────┘                  │
          │                            React Dashboard
-  Ollama / API LLM
-  (local process)
+    OpenAI-compatible API LLM
+    (OpenAI, Groq, Gemini, OpenRouter)
 ```
 
 The project lives in two independent repositories that communicate through the versioned REST API defined in `DATA_API.md`. Both tracks can be developed in parallel once the API contract is locked.
@@ -31,7 +31,7 @@ The project lives in two independent repositories that communicate through the v
 
 | Repo | Owner | Tech Stack | Purpose |
 |---|---|---|---|
-| `ai-tutor-local` | Developer A | Go, Wails, SQLite, sqlite-vec, ONNX Runtime, Ollama | Local desktop app |
+| `ai-tutor-local` | Developer A | Go, Wails, SQLite, sqlite-vec, ONNX Runtime | Local desktop app |
 | `ai-tutor-cloud` | Developer B | Node.js, PostgreSQL, React, Tailwind | Cloud API + teacher dashboard |
 
 ---
@@ -45,7 +45,7 @@ The project lives in two independent repositories that communicate through the v
 | `ingestion` | PDF parsing (pdfcpu), chapter detection, semantic chunking, overlap |
 | `embedding` | Runs local ONNX embedding model (`onnx/model_int8.onnx`); stores float32 vectors in sqlite-vec |
 | `retrieval` | Hybrid search (sqlite-vec ANN + FTS5 BM25), HyDE query expansion, optional reranker |
-| `generation` | LLM orchestration — routes to Ollama (Local) or OpenAI/Gemini/Anthropic (API); flashcard + quiz gen |
+| `generation` | LLM orchestration via OpenAI-compatible client (OpenAI/Groq/Gemini/OpenRouter); flashcard + quiz gen |
 | `fsrs` | Pure Go FSRS-4.5 algorithm; manages stability, difficulty, retrievability per card |
 | `scheduler` | Timetable logic — accepts exam config, outputs weighted day-by-day schedule |
 | `sync` | Analytics event extraction; manages `sync_queue`; periodic + event-triggered cloud POST |
@@ -59,14 +59,14 @@ Go routines keep the UI responsive at all times:
 - **Sync goroutine** — ticker-based (15 min), independent of UI
 - **Generation goroutine** — LLM calls are non-blocking; results streamed back via channels
 
-### 3.3 LLM Mode Toggle
+### 3.3 LLM Provider Strategy
 
 | Mode | Inference Target | Internet | Trigger |
 |---|---|---|---|
-| Local Mode | Ollama (`localhost:11434`) | No | User selects in Settings; Ollama must be running |
-| API Mode | OpenAI / Gemini / Anthropic endpoint | Yes | User selects + provides API key |
+| API Mode | OpenAI-compatible endpoint (`base_url`) | Yes | User selects provider and enters API key |
+| Local Mode (Planned) | Ollama (`localhost:11434`) | No | Deferred to a later sprint; currently disabled by default |
 
-All LLM calls are routed through a single `LLMClient` interface in Go — adding a new provider requires only a new implementation of that interface, no downstream code changes.
+Current implementation routes LLM calls through an OpenAI-compatible client contract in Go. Local Ollama mode remains on the roadmap and will be added as a provider path in a later sprint.
 
 ### 3.3.1 CRITICAL: Embedding Model Strategy (Decoupled from Generation)
 
@@ -84,11 +84,14 @@ Embedding and text-generation models are **decoupled**. This system uses **local
 **Rule:**
 - ✅ **ALWAYS use local ONNX embedding runtime with `onnx/model_int8.onnx`**, even in API mode
 - ❌ **NEVER attempt to use cloud embedding APIs** (OpenAI embed, Gemini embed, etc.)
-- Text generation CAN use either Local (Ollama) or API mode (OpenAI/Gemini/Anthropic)
+- Text generation currently uses OpenAI-compatible Chat Completions API for OpenAI, Groq, Gemini, and OpenRouter.
+- Optional local Ollama generation mode is deferred (kept for later implementation).
 
 **Configuration in `student_config`:**
 ```
-'llm_mode'         → 'local' | 'api'       (applies ONLY to generation)
+'llm_mode'         → 'api' | 'local'       ('local' reserved for planned Ollama mode)
+'api_provider'     → 'openai' | 'groq' | 'gemini' | 'openrouter'
+'api_base_url'     → provider OpenAI-compatible base URL
 'embedding_mode'   → always 'onnx'         (immutable; never changes)
 'onnx_model_path'  → 'onnx/model_int8.onnx'
 ```
