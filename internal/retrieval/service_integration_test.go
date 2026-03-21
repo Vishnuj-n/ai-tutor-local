@@ -1,5 +1,3 @@
-//go:build sqlite_fts5
-
 package retrieval
 
 import (
@@ -34,6 +32,14 @@ func TestIngestAndFTSRetrieveSmoke(t *testing.T) {
 		t.Fatalf("init db: %v", err)
 	}
 	t.Cleanup(func() { _ = database.Close() })
+
+	capabilities, err := database.DetectSQLiteCapabilities()
+	if err != nil {
+		t.Fatalf("detect sqlite capabilities: %v", err)
+	}
+	if !capabilities.FTS5 {
+		t.Skip("fts5 module unavailable in current runtime; skipping integration smoke")
+	}
 
 	if err := database.RunSchemaMigrationsWithOptions(schemaPath, db.MigrationOptions{SkipVectorTable: true}); err != nil {
 		t.Fatalf("run schema migrations: %v", err)

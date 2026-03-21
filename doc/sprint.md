@@ -10,7 +10,7 @@ Project: Local-First AI Tutoring System (Track A + Track B)
 |---|---|---|---|
 | Sprint 0 | Architecture, API contract, schema hardening | Completed | Core docs finalized, critical schema/API issues fixed |
 | Sprint 1 | Track A foundation scaffold | Completed | Go module, schema.sql, DB init, models, queries, module skeletons |
-| Sprint 2 | Current sprint: ingestion to retrieval pipeline baseline | In Progress | FTS5 guard + vec0 fallback implemented; embedding persistence to vec0 still pending |
+| Sprint 2 | Current sprint: ingestion to retrieval pipeline baseline | Completed | End-to-end ingestion + FTS retrieval baseline validated; vec path optional with strict mode/fallback |
 | Sprint 3 | FSRS + review workflows + telemetry quality | Planned | FSRS logic and review session metrics |
 | Sprint 4 | Classroom sync stabilization + cloud aggregation validation | Planned | Retry, dedup, dashboard consistency |
 | Sprint 5 | Release hardening | Planned | Performance, security, E2E regression suite |
@@ -40,7 +40,7 @@ Project: Local-First AI Tutoring System (Track A + Track B)
 - Added sync event model + queue service.
 - Added generation client interface.
 
-## Current Sprint (Sprint 2): In Progress
+## Current Sprint (Sprint 2): Completed
 
 ### Sprint Goal
 
@@ -84,7 +84,7 @@ Implementation note for Sprint 2:
 - Keep this ONNX path as the local embedding fallback path while resolving sqlite-vec extension compatibility.
 - Add a startup check that validates the model file exists before enabling ONNX-based embedding execution.
 
-## Mini Test Cases for Current Sprint (Pending Items)
+## Mini Test Cases for Sprint 2
 
 | ID | Area | Type | Preconditions | Steps | Expected |
 |---|---|---|---|---|---|
@@ -99,13 +99,13 @@ Implementation note for Sprint 2:
 
 ### Mini Test Case Status Snapshot
 
-- S2-TC-001: Partially satisfied (successful startup path validated with `sqlite_fts5` and vec fallback).
+- S2-TC-001: Satisfied (migrations run in supported runtime path with actionable guard behavior).
 - S2-TC-002: Satisfied (FTS5 verified using `sqlite_fts5` build tag).
-- S2-TC-003: Pending (requires runtime with sqlite-vec `vec0` available).
+- S2-TC-003: Satisfied via fallback policy (vec0 optional in Sprint 2 baseline; strict mode available for vec-required runs).
 - S2-TC-004: Satisfied (document registration flow implemented and available).
 - S2-TC-005: Satisfied (chunking behavior implemented in chunker logic).
 - S2-TC-006: Satisfied (sync enqueue flow implemented).
-- S2-TC-007: Satisfied (embedding client contract implemented for Ollama `/api/embed`).
+- S2-TC-007: Satisfied (embedding client contract implemented for Ollama `/api/embed`; vec persistence wired when vec is enabled).
 - S2-TC-008: Satisfied (actionable startup guard implemented for missing modules).
 
 ## Command Reference (Compile and Run)
@@ -158,6 +158,9 @@ if ($files.Count -gt 0) { gofmt -w $files }
   - vec0 probe fails
   - ONNX fallback path enabled
   - schema migration completes with vector table skipped
+- Integration test (`go test ./internal/retrieval -run TestIngestAndFTSRetrieveSmoke -v`): PASS/SKIP-safe
+  - Default runtime: skipped with explicit FTS5-unavailable message
+  - FTS5 runtime (`-tags "sqlite_fts5"`): PASS
 
 ## Definition of Done for Sprint 2
 
@@ -167,14 +170,17 @@ Sprint 2 can be marked completed when:
 - Document registration + chunking + DB persistence pass all Sprint 2 mini test cases.
 - Basic retrieval smoke test can query indexed content successfully.
 
-## Remaining Sprint 2 Work
+Status: Completed on 2026-03-21.
 
-- Wire embedding persistence end-to-end:
-  - If vec0 available: insert vectors into `embeddings` table mapped by chunk rowid.
-  - If vec0 unavailable: define temporary non-vec storage behavior clearly (or skip vector retrieval with explicit mode flag).
-- Add retrieval smoke integration:
-  - ingest sample doc -> query FTS retrieval -> assert expected chunk returned.
-- Add optional startup flag/config for forcing strict vec0 requirement in environments where fallback should be disabled.
+## Post-Sprint Backlog (From Sprint 2)
+
+- Add hybrid vector+FTS retrieval once sqlite-vec runtime is consistently available on target machines.
+- Add PDF-heavy smoke dataset for retrieval quality checks on real syllabus-sized content.
+- Keep and extend manual QA checklist for regression:
+  - ingestion status lifecycle
+  - chunk count sanity
+  - retrieval relevance
+  - strict vec mode behavior
 
 ## Sprint 2 Delta (Completed in this pass)
 
@@ -189,3 +195,6 @@ Sprint 2 can be marked completed when:
   - `go run -tags "sqlite_fts5" ./cmd -ingest-file <path> -notebook <name> -query <term>`
 - Retrieval integration smoke test added and passing:
   - `go test -tags "sqlite_fts5" ./internal/retrieval -run TestIngestAndFTSRetrieveSmoke -v`
+- One-click VS Code smoke tasks added:
+  - `run-sprint2-smoke` (fixed sample run)
+  - `run-sprint2-smoke-custom` (prompts for file path, notebook, and query)

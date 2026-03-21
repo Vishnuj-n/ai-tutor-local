@@ -1,0 +1,62 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "run-sprint2-smoke",
+      "type": "shell",
+      "command": "go",
+      "args": [
+        "run",
+        "-tags",
+        "sqlite_fts5",
+        "./cmd",
+        "-ingest-file",
+        "data/manual_smoke.txt",
+        "-notebook",
+        "Manual Test",
+        "-query",
+        "Parliament"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "run-sprint2-smoke-custom",
+      "type": "shell",
+      "command": "go",
+      "args": [
+        "run",
+        "-tags",
+        "sqlite_fts5",
+        "./cmd",
+        "-ingest-file",
+        "${input:smokeFilePath}",
+        "-notebook",
+        "${input:smokeNotebookName}",
+        "-query",
+        "${input:smokeQuery}"
+      ],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "smokeFilePath",
+      "type": "promptString",
+      "description": "Path to file for Sprint 2 smoke ingestion (PDF or text)",
+      "default": "data/manual_smoke.txt"
+    },
+    {
+      "id": "smokeNotebookName",
+      "type": "promptString",
+      "description": "Notebook name for smoke run",
+      "default": "Manual Test"
+    },
+    {
+      "id": "smokeQuery",
+      "type": "promptString",
+      "description": "Keyword query to run after ingestion",
+      "default": "Parliament"
+    }
+  ]
+}
