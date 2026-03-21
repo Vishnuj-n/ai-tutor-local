@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -17,6 +18,7 @@ import (
 	"ai-tutor-local/internal/retrieval"
 	"ai-tutor-local/internal/scheduler"
 	syncsvc "ai-tutor-local/internal/sync"
+	"ai-tutor-local/internal/ui"
 
 	"github.com/google/uuid"
 )
@@ -28,6 +30,7 @@ func main() {
 	strictVec := flag.Bool("strict-vec", false, "Fail startup if sqlite-vec (vec0) is unavailable")
 	reviewSmoke := flag.Bool("review-smoke", false, "Run Sprint 3 FSRS review and telemetry smoke workflow")
 	reviewCards := flag.Int("review-cards", 3, "Number of sample flashcards to create for review smoke run")
+	dashboardSnapshot := flag.Bool("dashboard-snapshot", false, "Print home dashboard snapshot JSON for frontend wiring")
 	flag.Parse()
 
 	dbPath := filepath.Join("data", "app.db")
@@ -84,7 +87,33 @@ func main() {
 		return
 	}
 
+	if *dashboardSnapshot {
+		if err := runDashboardSnapshot(database); err != nil {
+			log.Fatalf("dashboard snapshot run failed: %v", err)
+		}
+		return
+	}
+
 	fmt.Println("ai-tutor-local Sprint 3 backend baseline ready")
+}
+
+func runDashboardSnapshot(database *db.Database) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	svc := ui.NewDashboardService(database)
+	snapshot, err := svc.GetSnapshot(ctx)
+	if err != nil {
+		return fmt.Errorf("load dashboard snapshot: %w", err)
+	}
+
+	b, err := json.MarshalIndent(snapshot, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal dashboard snapshot: %w", err)
+	}
+
+	fmt.Println(string(b))
+	return nil
 }
 
 func runIngestionSmoke(database *db.Database, vecAvailable bool, filePath, notebookName, query string) error {

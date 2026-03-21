@@ -107,9 +107,9 @@
             <h3>Quick Actions</h3>
           </div>
           <div class="quick-actions">
-            <button class="btn btn-primary">Start Review</button>
+            <button class="btn btn-primary" id="start-review">Start Review</button>
             <button class="btn">Upload PDF</button>
-            <button class="btn">Ask a Question</button>
+            <button class="btn" id="open-rag">Ask a Question</button>
             <button class="btn">Classroom Sync</button>
           </div>
 
@@ -120,6 +120,49 @@
           </div>
         </article>
       </div>
+    </section>
+
+    <section class="panel hidden" id="review-panel">
+      <div class="panel-head">
+        <h2>Review Session (FSRS)</h2>
+        <p>Matches App Flow 1.4 with recall rating actions.</p>
+      </div>
+      <article class="surface">
+        <h3 id="review-question">Q: What is the role of Fundamental Rights?</h3>
+        <p id="review-answer" class="hidden">A: They guarantee enforceable civil liberties and constitutional remedies.</p>
+        <div class="form-actions" style="margin-top:0.8rem;">
+          <button class="btn" id="show-answer">Show Answer</button>
+          <button class="btn" id="rate-again">Again</button>
+          <button class="btn" id="rate-hard">Hard</button>
+          <button class="btn" id="rate-good">Good</button>
+          <button class="btn" id="rate-easy">Easy</button>
+          <button class="btn" id="back-dashboard-review">Back</button>
+        </div>
+        <p id="review-feedback" class="status">Rate recall to update the next due date.</p>
+      </article>
+    </section>
+
+    <section class="panel hidden" id="rag-panel">
+      <div class="panel-head">
+        <h2>Ask a Question (RAG)</h2>
+        <p>Matches App Flow 1.6: HyDE + retrieval + grounded answer.</p>
+      </div>
+      <article class="surface">
+        <label class="full-width">
+          Question
+          <input type="text" id="rag-question" placeholder="What are the key features of federalism?">
+        </label>
+        <div class="form-actions" style="margin-top:0.8rem;">
+          <button class="btn btn-primary" id="run-rag">Run Query</button>
+          <button class="btn" id="back-dashboard-rag">Back</button>
+        </div>
+        <p id="rag-status" class="status">Ready.</p>
+        <div id="rag-answer-box" class="hidden" style="margin-top:0.8rem; border:1px solid var(--border); border-radius:10px; padding:0.7rem;">
+          <strong>Grounded Answer</strong>
+          <p id="rag-answer-text" style="margin:0.5rem 0 0.4rem;"></p>
+          <small id="rag-sources" style="color:var(--muted);"></small>
+        </div>
+      </article>
     </section>
   </main>
 

@@ -246,6 +246,16 @@ Status: Completed on 2026-03-21.
   - home dashboard cards (due/streak/notebooks/sync)
   - notebook ingestion status panel with progress bars
   - quick actions + manual sync status panel
+- Added backend dashboard snapshot service (`internal/ui`) to expose real home-screen data:
+  - due-card count, notebook count, study streak, sync pending count
+  - notebook/document ingestion status rows with normalized progress mapping
+- Added CLI snapshot export command for frontend wiring:
+  - `go run -tags "sqlite_fts5" ./cmd -dashboard-snapshot`
+- Frontend bridge support added:
+  - `frontend/app.js` consumes `window.__AI_TUTOR_SNAPSHOT__` when provided by host runtime (Wails bridge target)
+- Extended frontend flow coverage from `APP_FLOW.md`:
+  - review session panel with rating actions (`Again/Hard/Good/Easy`)
+  - ask-question panel with HyDE/retrieval status and grounded-answer placeholder
 
 ### Sprint 4 Next Coding Items
 
