@@ -3,6 +3,7 @@ package sync
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"ai-tutor-local/internal/db"
@@ -21,6 +22,10 @@ func NewService(database *db.Database) *Service {
 
 // Enqueue stores an event in sync_queue for periodic delivery.
 func (s *Service) Enqueue(event Event) error {
+	if err := validateEvent(event); err != nil {
+		return err
+	}
+
 	payload, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("marshal event: %w", err)
@@ -33,4 +38,32 @@ func (s *Service) Enqueue(event Event) error {
 		Status:    "pending",
 	}
 	return s.queries.Enqueue(item)
+}
+
+func validateEvent(event Event) error {
+	if strings.TrimSpace(event.EventID) == "" {
+		return fmt.Errorf("enqueue event: event_id is required")
+	}
+	if strings.TrimSpace(event.EventType) == "" {
+		return fmt.Errorf("enqueue event: event_type is required")
+	}
+	if strings.TrimSpace(event.NotebookID) == "" {
+		return fmt.Errorf("enqueue event: notebook_id is required")
+	}
+	if event.TimeSpentSeconds < 0 {
+		return fmt.Errorf("enqueue event: time_spent_seconds cannot be negative")
+	}
+	if event.FlashcardsCompleted < 0 {
+		return fmt.Errorf("enqueue event: flashcards_completed cannot be negative")
+	}
+	if event.AccuracyPct != nil {
+		if *event.AccuracyPct < 0 || *event.AccuracyPct > 100 {
+			return fmt.Errorf("enqueue event: accuracy_pct must be in [0,100]")
+		}
+	}
+	if event.OccurredAt.IsZero() {
+		return fmt.Errorf("enqueue event: occurred_at is required")
+	}
+
+	return nil
 }

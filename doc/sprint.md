@@ -11,7 +11,7 @@ Project: Local-First AI Tutoring System (Track A + Track B)
 | Sprint 0 | Architecture, API contract, schema hardening | Completed | Core docs finalized, critical schema/API issues fixed |
 | Sprint 1 | Track A foundation scaffold | Completed | Go module, schema.sql, DB init, models, queries, module skeletons |
 | Sprint 2 | Current sprint: ingestion to retrieval pipeline baseline | Completed | End-to-end ingestion + FTS retrieval baseline validated; vec path optional with strict mode/fallback |
-| Sprint 3 | FSRS + review workflows + telemetry quality | Planned | FSRS logic and review session metrics |
+| Sprint 3 | FSRS + review workflows + telemetry quality | Completed | FSRS rating workflow, due-card scheduler, session telemetry quality guards implemented |
 | Sprint 4 | Classroom sync stabilization + cloud aggregation validation | Planned | Retry, dedup, dashboard consistency |
 | Sprint 5 | Release hardening | Planned | Performance, security, E2E regression suite |
 
@@ -181,6 +181,50 @@ Status: Completed on 2026-03-21.
   - chunk count sanity
   - retrieval relevance
   - strict vec mode behavior
+
+## Sprint 3 Completion (2026-03-21)
+
+### Scope Implemented
+
+- FSRS review workflow service added:
+  - rating handling (`Again`, `Hard`, `Good`, `Easy`)
+  - card schedule updates (`stability`, `difficulty`, `retrievability`, `reps`, `lapses`, `state`, `due_date`)
+  - `review_logs` persistence per card review
+- Due-card scheduler baseline added:
+  - notebook-scoped due queue retrieval
+  - due-card count helper for dashboard/session use
+- Session telemetry quality path implemented:
+  - session summary persistence to `study_sessions`
+  - validated analytics enqueue for `flashcard_session_completed`
+  - event validation guards in sync service (required fields, non-negative metrics, bounded accuracy)
+- Sprint 3 smoke runtime command added:
+  - `go run -tags "sqlite_fts5" ./cmd -review-smoke -notebook "<name>" -review-cards <n>`
+- One-click task added:
+  - `run-sprint3-review-smoke`
+
+### Validation Snapshot
+
+- `go build ./...`: PASS
+- `go test ./internal/fsrs ./internal/retrieval -v`: PASS
+- `go run -tags "sqlite_fts5" ./cmd -review-smoke -notebook "Sprint3 CLI" -review-cards 4`: PASS
+
+### Definition of Done Status (Sprint 3)
+
+- FSRS logic and rating-based schedule updates: Completed
+- Review workflow persistence (`review_logs`, card updates): Completed
+- Session telemetry quality and sync queue events: Completed
+
+Status: Completed on 2026-03-21.
+
+## Wails GUI Status and Timeline
+
+- Current status:
+  - Wails GUI is **not implemented yet** in this repository.
+  - `frontend/` currently has no UI scaffold and no Wails app bootstrap files are present.
+- Planned implementation window:
+  - Start in Sprint 4 (immediately after backend Sprint 3 completion).
+  - Sprint 4 target: bootstrap Wails app shell + core screens for Notebook list, document ingestion status, due cards/review flow, and sync status.
+  - Sprint 5 target: polish, UX hardening, and end-to-end desktop packaging.
 
 ## Sprint 2 Delta (Completed in this pass)
 

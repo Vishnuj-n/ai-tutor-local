@@ -37,6 +37,24 @@
         "${input:smokeQuery}"
       ],
       "problemMatcher": []
+    },
+    {
+      "label": "run-sprint3-review-smoke",
+      "type": "shell",
+      "command": "go",
+      "args": [
+        "run",
+        "-tags",
+        "sqlite_fts5",
+        "./cmd",
+        "-review-smoke",
+        "-notebook",
+        "${input:reviewNotebookName}",
+        "-review-cards",
+        "${input:reviewCardCount}"
+      ],
+      "group": "test",
+      "problemMatcher": []
     }
   ],
   "inputs": [
@@ -57,6 +75,18 @@
       "type": "promptString",
       "description": "Keyword query to run after ingestion",
       "default": "Parliament"
+    },
+    {
+      "id": "reviewNotebookName",
+      "type": "promptString",
+      "description": "Notebook name for Sprint 3 review smoke",
+      "default": "Sprint3 Review"
+    },
+    {
+      "id": "reviewCardCount",
+      "type": "promptString",
+      "description": "Number of flashcards to generate for review smoke",
+      "default": "3"
     }
   ]
 }

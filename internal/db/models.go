@@ -126,10 +126,18 @@ type SyncQueueItem struct {
 	Status      string     `gorm:"default:'pending';index" json:"status"` // pending | sent | failed
 }
 
+func (SyncQueueItem) TableName() string {
+	return "sync_queue"
+}
+
 // StudentConfig stores key-value configuration for the student
 type StudentConfig struct {
 	Key   string `gorm:"primaryKey" json:"key"`
 	Value string `gorm:"type:text;not null" json:"value"`
+}
+
+func (StudentConfig) TableName() string {
+	return "student_config"
 }
 
 // ConfigKeys for student_config table

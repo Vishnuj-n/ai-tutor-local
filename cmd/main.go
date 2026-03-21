@@ -12,8 +12,11 @@ import (
 
 	"ai-tutor-local/internal/db"
 	"ai-tutor-local/internal/embedding"
+	"ai-tutor-local/internal/fsrs"
 	"ai-tutor-local/internal/ingestion"
 	"ai-tutor-local/internal/retrieval"
+	"ai-tutor-local/internal/scheduler"
+	syncsvc "ai-tutor-local/internal/sync"
 
 	"github.com/google/uuid"
 )
@@ -23,6 +26,8 @@ func main() {
 	notebookName := flag.String("notebook", "Sprint2 Notebook", "Notebook name for ingestion smoke run")
 	query := flag.String("query", "", "Optional keyword query to run after ingestion")
 	strictVec := flag.Bool("strict-vec", false, "Fail startup if sqlite-vec (vec0) is unavailable")
+	reviewSmoke := flag.Bool("review-smoke", false, "Run Sprint 3 FSRS review and telemetry smoke workflow")
+	reviewCards := flag.Int("review-cards", 3, "Number of sample flashcards to create for review smoke run")
 	flag.Parse()
 
 	dbPath := filepath.Join("data", "app.db")
@@ -72,7 +77,14 @@ func main() {
 		return
 	}
 
-	fmt.Println("ai-tutor-local Sprint 2 baseline ready")
+	if *reviewSmoke {
+		if err := runReviewSmoke(database, *notebookName, *reviewCards); err != nil {
+			log.Fatalf("review smoke run failed: %v", err)
+		}
+		return
+	}
+
+	fmt.Println("ai-tutor-local Sprint 3 backend baseline ready")
 }
 
 func runIngestionSmoke(database *db.Database, vecAvailable bool, filePath, notebookName, query string) error {
@@ -129,4 +141,136 @@ func runIngestionSmoke(database *db.Database, vecAvailable bool, filePath, noteb
 func envBool(key string) bool {
 	value := strings.TrimSpace(strings.ToLower(os.Getenv(key)))
 	return value == "1" || value == "true" || value == "yes"
+}
+
+func runReviewSmoke(database *db.Database, notebookName string, cardCount int) error {
+	if cardCount <= 0 {
+		cardCount = 3
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+
+	now := time.Now().UTC()
+	nb := &db.Notebook{
+		ID:          uuid.NewString(),
+		Name:        notebookName,
+		Description: "Sprint 3 review smoke run",
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	if err := database.DB.WithContext(ctx).Create(nb).Error; err != nil {
+		return fmt.Errorf("create notebook: %w", err)
+	}
+
+	seedDoc := &db.Document{
+		ID:         uuid.NewString(),
+		NotebookID: nb.ID,
+		Filename:   "sprint3-seed.txt",
+		FilePath:   "sprint3-seed.txt",
+		FileHash:   uuid.NewString(),
+		Status:     "ready",
+		CreatedAt:  now,
+	}
+	if err := database.DB.WithContext(ctx).Create(seedDoc).Error; err != nil {
+		return fmt.Errorf("create seed document: %w", err)
+	}
+
+	seedChunk := &db.Chunk{
+		ID:            uuid.NewString(),
+		DocumentID:    seedDoc.ID,
+		NotebookID:    nb.ID,
+		ChapterName:   "General",
+		ChunkIndex:    0,
+		Content:       "Sprint 3 seed content for FSRS review workflow.",
+		TaggedContent: "[" + nb.Name + " - General] Sprint 3 seed content for FSRS review workflow.",
+		TokenCount:    10,
+		CreatedAt:     now,
+	}
+	if err := database.DB.WithContext(ctx).Create(seedChunk).Error; err != nil {
+		return fmt.Errorf("create seed chunk: %w", err)
+	}
+
+	for i := 0; i < cardCount; i++ {
+		card := &db.Flashcard{
+			ID:             uuid.NewString(),
+			ChunkID:        seedChunk.ID,
+			NotebookID:     nb.ID,
+			Question:       fmt.Sprintf("Q%d: What is Sprint 3 review quality metric?", i+1),
+			Answer:         "Stability, difficulty, retrievability and session telemetry.",
+			Source:         "ai",
+			Stability:      0.4,
+			Difficulty:     5,
+			Retrievability: 1,
+			State:          "new",
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		}
+		if err := database.DB.WithContext(ctx).Create(card).Error; err != nil {
+			return fmt.Errorf("create flashcard %d: %w", i+1, err)
+		}
+	}
+
+	syncService := syncsvc.NewService(database)
+	fsrsService := fsrs.NewService(database, syncService)
+	schedulerService := scheduler.NewService(database)
+
+	dueCards, err := schedulerService.NextDueCards(ctx, nb.ID, cardCount)
+	if err != nil {
+		return fmt.Errorf("load due cards: %w", err)
+	}
+	if len(dueCards) == 0 {
+		return fmt.Errorf("no due cards available for review smoke")
+	}
+
+	ratings := []int{fsrs.RatingGood, fsrs.RatingEasy, fsrs.RatingHard, fsrs.RatingAgain}
+	correct := 0
+	totalTimeMs := 0
+	sessionStart := time.Now().UTC()
+
+	for i, card := range dueCards {
+		rating := ratings[i%len(ratings)]
+		if rating >= fsrs.RatingGood {
+			correct++
+		}
+		timeTaken := 2500 + (i * 300)
+		totalTimeMs += timeTaken
+
+		if _, err := fsrsService.ReviewCard(ctx, fsrs.ReviewInput{
+			FlashcardID:  card.ID,
+			NotebookID:   nb.ID,
+			NotebookName: nb.Name,
+			Rating:       rating,
+			TimeTakenMs:  timeTaken,
+		}); err != nil {
+			return fmt.Errorf("review card %s: %w", card.ID, err)
+		}
+	}
+
+	sessionEnd := time.Now().UTC()
+	if err := fsrsService.CompleteSession(ctx, fsrs.SessionSummary{
+		NotebookID:         nb.ID,
+		NotebookName:       nb.Name,
+		StartedAt:          sessionStart,
+		EndedAt:            sessionEnd,
+		FlashcardsReviewed: len(dueCards),
+		CorrectRecallCount: correct,
+		TotalTimeTakenMS:   totalTimeMs,
+		EmitTelemetry:      true,
+	}); err != nil {
+		return fmt.Errorf("complete review session: %w", err)
+	}
+
+	var reviewLogCount int64
+	if err := database.DB.WithContext(ctx).Raw("SELECT COUNT(1) FROM review_logs").Scan(&reviewLogCount).Error; err != nil {
+		return fmt.Errorf("count review logs: %w", err)
+	}
+
+	var syncQueueCount int64
+	if err := database.DB.WithContext(ctx).Raw("SELECT COUNT(1) FROM sync_queue").Scan(&syncQueueCount).Error; err != nil {
+		return fmt.Errorf("count sync queue rows: %w", err)
+	}
+
+	fmt.Printf("review smoke complete: notebook=%s reviewed=%d review_logs=%d sync_events=%d\n", nb.ID, len(dueCards), reviewLogCount, syncQueueCount)
+	return nil
 }
