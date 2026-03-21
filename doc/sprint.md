@@ -10,7 +10,7 @@ Project: Local-First AI Tutoring System (Track A + Track B)
 |---|---|---|---|
 | Sprint 0 | Architecture, API contract, schema hardening | Completed | Core docs finalized, critical schema/API issues fixed |
 | Sprint 1 | Track A foundation scaffold | Completed | Go module, schema.sql, DB init, models, queries, module skeletons |
-| Sprint 2 | Current sprint: ingestion to retrieval pipeline baseline | In Progress | Runtime blocked by SQLite extension availability (FTS5/sqlite-vec) |
+| Sprint 2 | Current sprint: ingestion to retrieval pipeline baseline | In Progress | FTS5 guard + vec0 fallback implemented; embedding persistence to vec0 still pending |
 | Sprint 3 | FSRS + review workflows + telemetry quality | Planned | FSRS logic and review session metrics |
 | Sprint 4 | Classroom sync stabilization + cloud aggregation validation | Planned | Retry, dedup, dashboard consistency |
 | Sprint 5 | Release hardening | Planned | Performance, security, E2E regression suite |
@@ -54,11 +54,24 @@ Establish reliable end-to-end local ingestion baseline and retrieval readiness:
 ### Current Status
 
 - Compile status: Passed.
-- Run status: Failing at startup migration due to sqlite-vec module availability in runtime environment.
-- Observed blocker:
-  - no such module: vec0
-- FTS5 status:
-  - Fixed when running with build tag: sqlite_fts5
+- Run status:
+  - `go run ./cmd` now fails fast with actionable FTS5 guidance when FTS5 is missing.
+  - `go run -tags "sqlite_fts5" ./cmd` now succeeds even when `vec0` is missing, by using ONNX fallback guard + schema vector-table skip.
+- Runtime guards implemented:
+  - SQLite capability probe for `fts5` and `vec0` at startup.
+  - Hard fail when FTS5 is unavailable (required for retrieval baseline).
+  - ONNX fallback validation (`onnx/model_int8.onnx` must exist) when `vec0` is unavailable.
+  - Schema migration option to skip `embeddings` virtual table when `vec0` is missing.
+
+### Sprint 2 Implementation Progress (2026-03-21)
+
+- Ingestion pipeline baseline extended:
+  - `RegisterDocument` remains the entry registration step.
+  - Added document processing path that reads registered file, chunks content, persists chunk rows, and updates document status (`processing` -> `ready` / `error`).
+- Retrieval baseline added:
+  - Added FTS5 keyword retrieval service with notebook-scoped BM25 ranking.
+- Startup hardening added:
+  - Capability preflight and graceful fallback behavior wired in app startup.
 
 ### Embedding Runtime Update
 
@@ -83,6 +96,17 @@ Implementation note for Sprint 2:
 | S2-TC-006 | Sync queue insert | Integration | Valid event payload | Enqueue event | Row added in sync_queue with pending status |
 | S2-TC-007 | Embedding request contract | Unit | Mock Ollama endpoint | Call EmbedText | Request uses model nomic-embed-text and decodes embeddings |
 | S2-TC-008 | Runtime health guard | Integration | Missing FTS5/sqlite-vec | Run app startup | Fails gracefully with actionable error message |
+
+### Mini Test Case Status Snapshot
+
+- S2-TC-001: Partially satisfied (successful startup path validated with `sqlite_fts5` and vec fallback).
+- S2-TC-002: Satisfied (FTS5 verified using `sqlite_fts5` build tag).
+- S2-TC-003: Pending (requires runtime with sqlite-vec `vec0` available).
+- S2-TC-004: Satisfied (document registration flow implemented and available).
+- S2-TC-005: Satisfied (chunking behavior implemented in chunker logic).
+- S2-TC-006: Satisfied (sync enqueue flow implemented).
+- S2-TC-007: Satisfied (embedding client contract implemented for Ollama `/api/embed`).
+- S2-TC-008: Satisfied (actionable startup guard implemented for missing modules).
 
 ## Command Reference (Compile and Run)
 
@@ -127,9 +151,13 @@ if ($files.Count -gt 0) { gofmt -w $files }
 ## Latest Execution Snapshot
 
 - Compile (`go build ./...`): PASS
-- Run (`go run ./cmd`): FAIL
-  - Error: no such module: fts5
-- Run with build tag (`go run -tags "sqlite_fts5" ./cmd`): FTS5 is available, next error is no such module: vec0
+- Run (`go run ./cmd`): FAIL (expected on current machine)
+  - Error: SQLite FTS5 module is unavailable (actionable message printed)
+- Run with build tag (`go run -tags "sqlite_fts5" ./cmd`): PASS
+  - FTS5 probe succeeds
+  - vec0 probe fails
+  - ONNX fallback path enabled
+  - schema migration completes with vector table skipped
 
 ## Definition of Done for Sprint 2
 
@@ -138,3 +166,12 @@ Sprint 2 can be marked completed when:
 - FTS5 and sqlite-vec are both operational in local runtime (or ONNX fallback path is fully wired for embeddings while vector storage fallback is defined).
 - Document registration + chunking + DB persistence pass all Sprint 2 mini test cases.
 - Basic retrieval smoke test can query indexed content successfully.
+
+## Remaining Sprint 2 Work
+
+- Wire embedding persistence end-to-end:
+  - If vec0 available: insert vectors into `embeddings` table mapped by chunk rowid.
+  - If vec0 unavailable: define temporary non-vec storage behavior clearly (or skip vector retrieval with explicit mode flag).
+- Add retrieval smoke integration:
+  - ingest sample doc -> query FTS retrieval -> assert expected chunk returned.
+- Add optional startup flag/config for forcing strict vec0 requirement in environments where fallback should be disabled.

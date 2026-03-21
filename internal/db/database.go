@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gorm.io/driver/sqlite"
@@ -15,6 +16,17 @@ import (
 // Database represents the SQLite connection pool
 type Database struct {
 	DB *gorm.DB
+}
+
+// SQLiteCapabilities captures optional module availability in current runtime.
+type SQLiteCapabilities struct {
+	FTS5 bool
+	Vec0 bool
+}
+
+// MigrationOptions configures runtime schema behavior.
+type MigrationOptions struct {
+	SkipVectorTable bool
 }
 
 var dbInstance *Database
@@ -94,14 +106,82 @@ func (d *Database) Migrate() error {
 
 // RunSchemaMigrations executes raw SQL migrations (for FTS5 and sqlite-vec setup)
 func (d *Database) RunSchemaMigrations(schemaPath string) error {
+	return d.RunSchemaMigrationsWithOptions(schemaPath, MigrationOptions{})
+}
+
+// RunSchemaMigrationsWithOptions executes raw SQL migrations with runtime options.
+func (d *Database) RunSchemaMigrationsWithOptions(schemaPath string, opts MigrationOptions) error {
 	schema, err := os.ReadFile(schemaPath)
 	if err != nil {
 		return fmt.Errorf("failed to read schema file: %w", err)
 	}
 
-	if err := d.DB.Exec(string(schema)).Error; err != nil {
+	schemaSQL := string(schema)
+	if opts.SkipVectorTable {
+		schemaSQL = stripVectorTableDDL(schemaSQL)
+	}
+
+	if err := d.DB.Exec(schemaSQL).Error; err != nil {
 		return fmt.Errorf("failed to run schema migrations: %w", err)
 	}
 
 	return nil
+}
+
+// DetectSQLiteCapabilities probes whether required optional SQLite modules are available.
+func (d *Database) DetectSQLiteCapabilities() (SQLiteCapabilities, error) {
+	fts5OK, err := d.checkVirtualModule("fts5", "CREATE VIRTUAL TABLE temp.__fts5_probe USING fts5(content)")
+	if err != nil {
+		return SQLiteCapabilities{}, err
+	}
+
+	vec0OK, err := d.checkVirtualModule("vec0", "CREATE VIRTUAL TABLE temp.__vec0_probe USING vec0(embedding float[3])")
+	if err != nil {
+		return SQLiteCapabilities{}, err
+	}
+
+	return SQLiteCapabilities{FTS5: fts5OK, Vec0: vec0OK}, nil
+}
+
+func (d *Database) checkVirtualModule(moduleName, createSQL string) (bool, error) {
+	if err := d.DB.Exec(createSQL).Error; err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "no such module: "+strings.ToLower(moduleName)) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed probing sqlite module %s: %w", moduleName, err)
+	}
+
+	dropSQL := fmt.Sprintf("DROP TABLE IF EXISTS temp.__%s_probe", moduleName)
+	if err := d.DB.Exec(dropSQL).Error; err != nil {
+		return false, fmt.Errorf("failed cleanup sqlite module probe %s: %w", moduleName, err)
+	}
+
+	return true, nil
+}
+
+func stripVectorTableDDL(schemaSQL string) string {
+	lines := strings.Split(schemaSQL, "\n")
+	out := make([]string, 0, len(lines))
+	skip := false
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		upper := strings.ToUpper(trimmed)
+
+		if !skip && strings.HasPrefix(upper, "CREATE VIRTUAL TABLE IF NOT EXISTS EMBEDDINGS USING VEC0(") {
+			skip = true
+			continue
+		}
+
+		if skip {
+			if strings.Contains(trimmed, ");") {
+				skip = false
+			}
+			continue
+		}
+
+		out = append(out, line)
+	}
+
+	return strings.Join(out, "\n")
 }

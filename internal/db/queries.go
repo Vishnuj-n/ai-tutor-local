@@ -1,7 +1,10 @@
 package db
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -72,6 +75,61 @@ func (q *ChunkQueries) ListByNotebookID(notebookID string) ([]Chunk, error) {
 	var chunks []Chunk
 	err := q.db.Where("notebook_id = ?", notebookID).Order("created_at DESC").Find(&chunks).Error
 	return chunks, err
+}
+
+// EmbeddingQueries provides operations for sqlite-vec backed embeddings.
+type EmbeddingQueries struct {
+	db *gorm.DB
+}
+
+func NewEmbeddingQueries(database *gorm.DB) *EmbeddingQueries {
+	return &EmbeddingQueries{db: database}
+}
+
+func (q *EmbeddingQueries) UpsertBatchByChunkID(ctx context.Context, chunks []Chunk, vectors [][]float32) error {
+	if len(chunks) == 0 {
+		return nil
+	}
+	if len(chunks) != len(vectors) {
+		return fmt.Errorf("chunks/vector length mismatch: %d/%d", len(chunks), len(vectors))
+	}
+
+	return q.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for i := range chunks {
+			if err := upsertEmbeddingByChunkID(ctx, tx, chunks[i].ID, vectors[i]); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func upsertEmbeddingByChunkID(ctx context.Context, tx *gorm.DB, chunkID string, embedding []float32) error {
+	var row struct {
+		RowID int64 `gorm:"column:rowid"`
+	}
+
+	if err := tx.WithContext(ctx).Raw("SELECT rowid FROM chunks WHERE id = ?", chunkID).Scan(&row).Error; err != nil {
+		return fmt.Errorf("lookup chunk rowid: %w", err)
+	}
+	if row.RowID == 0 {
+		return fmt.Errorf("chunk rowid not found for chunk_id=%s", chunkID)
+	}
+
+	vectorJSON, err := json.Marshal(embedding)
+	if err != nil {
+		return fmt.Errorf("marshal embedding vector: %w", err)
+	}
+
+	if err := tx.WithContext(ctx).Exec(`
+INSERT INTO embeddings(chunk_rowid, embedding)
+VALUES (?, ?)
+ON CONFLICT(chunk_rowid) DO UPDATE SET embedding=excluded.embedding;
+`, row.RowID, string(vectorJSON)).Error; err != nil {
+		return fmt.Errorf("upsert embedding row: %w", err)
+	}
+
+	return nil
 }
 
 // FlashcardQueries provides operations for spaced repetition cards.

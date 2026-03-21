@@ -1,4 +1,6 @@
 build/bin
 node_modules
 frontend/dist
-ai-tutor-local\onnx\model_int8.onnx
+# Add this to .gitignore
+onnx/model_int8.onnx
+*.onnx
