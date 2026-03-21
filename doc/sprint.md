@@ -175,3 +175,17 @@ Sprint 2 can be marked completed when:
 - Add retrieval smoke integration:
   - ingest sample doc -> query FTS retrieval -> assert expected chunk returned.
 - Add optional startup flag/config for forcing strict vec0 requirement in environments where fallback should be disabled.
+
+## Sprint 2 Delta (Completed in this pass)
+
+- Embedding persistence path implemented for vec-enabled runtime:
+  - ingestion now supports optional embedder wiring and batch upsert into `embeddings` by chunk rowid.
+- Degraded mode clarified and implemented:
+  - when vec is unavailable, vector persistence is disabled and ingestion/retrieval continue on FTS baseline.
+- Strict vec runtime option added:
+  - CLI flag: `-strict-vec`
+  - Env flag: `AI_TUTOR_STRICT_VEC0=true`
+- Real document smoke mode added to app entrypoint:
+  - `go run -tags "sqlite_fts5" ./cmd -ingest-file <path> -notebook <name> -query <term>`
+- Retrieval integration smoke test added and passing:
+  - `go test -tags "sqlite_fts5" ./internal/retrieval -run TestIngestAndFTSRetrieveSmoke -v`
