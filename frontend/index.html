@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Tutor Local - Sprint 4 Frontend Scaffold</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient"></div>
+  <div class="grid-overlay"></div>
+
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Sprint 4 Frontend Kickoff</p>
+        <h1>Local First Tutor Console</h1>
+      </div>
+      <div class="topbar-pills">
+        <span class="pill">ONNX embeddings</span>
+        <span class="pill">API generation</span>
+      </div>
+    </header>
+
+    <section class="panel" id="onboarding-panel">
+      <div class="panel-head">
+        <h2>Onboarding + LLM Provider Setup</h2>
+        <p>Matches App Flow 1.1. Keys are session-only.</p>
+      </div>
+      <form id="onboarding-form" class="form-grid">
+        <label>
+          Student Name
+          <input type="text" id="student-name" placeholder="Vishnu">
+        </label>
+        <label>
+          USN
+          <input type="text" id="student-usn" placeholder="1RV22CS000">
+        </label>
+        <label>
+          Provider
+          <select id="provider">
+            <option value="groq">Groq</option>
+            <option value="openai">OpenAI</option>
+            <option value="gemini">Gemini</option>
+            <option value="openrouter">OpenRouter</option>
+          </select>
+        </label>
+        <label>
+          Base URL
+          <input type="text" id="base-url" value="https://api.groq.com/openai/v1">
+        </label>
+        <label class="full-width">
+          API Key
+          <input type="password" id="api-key" placeholder="gsk_...">
+        </label>
+        <div class="full-width form-actions">
+          <button type="submit" class="btn btn-primary">Validate Provider</button>
+          <button type="button" id="enter-dashboard" class="btn">Continue to Dashboard</button>
+        </div>
+        <p id="provider-status" class="status">Provider not validated.</p>
+      </form>
+    </section>
+
+    <section class="panel hidden" id="dashboard-panel">
+      <div class="panel-head">
+        <h2>Home Dashboard</h2>
+        <p>Matches App Flow 1.2 + 1.3 + 1.8 (status-first view).</p>
+      </div>
+
+      <div class="stats-grid">
+        <article class="stat-card">
+          <h3>Due Today</h3>
+          <p id="due-count" class="value">12</p>
+          <span>FSRS queue ready</span>
+        </article>
+        <article class="stat-card">
+          <h3>Study Streak</h3>
+          <p id="streak-count" class="value">7 days</p>
+          <span>Consistency score: High</span>
+        </article>
+        <article class="stat-card">
+          <h3>Active Notebooks</h3>
+          <p id="notebook-count" class="value">3</p>
+          <span>Polity, Economy, History</span>
+        </article>
+        <article class="stat-card">
+          <h3>Sync Queue</h3>
+          <p id="sync-count" class="value">4 pending</p>
+          <span>Retry worker healthy</span>
+        </article>
+      </div>
+
+      <div class="layout-grid">
+        <article class="surface">
+          <div class="surface-head">
+            <h3>Notebook Ingestion Status</h3>
+            <button class="btn" id="simulate-upload">Simulate Upload</button>
+          </div>
+          <ul id="ingestion-list" class="list"></ul>
+        </article>
+
+        <article class="surface">
+          <div class="surface-head">
+            <h3>Quick Actions</h3>
+          </div>
+          <div class="quick-actions">
+            <button class="btn btn-primary">Start Review</button>
+            <button class="btn">Upload PDF</button>
+            <button class="btn">Ask a Question</button>
+            <button class="btn">Classroom Sync</button>
+          </div>
+
+          <div class="sync-box">
+            <h4>Sync Status</h4>
+            <p id="sync-status">Periodic sync every 15 minutes. Last run: 2 min ago.</p>
+            <button class="btn" id="sync-now">Run Manual Sync</button>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

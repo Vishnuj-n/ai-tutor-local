@@ -241,6 +241,11 @@ Status: Completed on 2026-03-21.
 - Added focused ONNX integration test validating embedding output shape contract (`768` dims).
 - Added sync queue dedup guard: duplicate `event_id` enqueue is now idempotent (no duplicate row, no hard failure).
 - Added sync service tests for dedup behavior and event metric validation guardrails.
+- Started Sprint 4 frontend scaffold in `frontend/` based on `APP_FLOW.md`:
+  - onboarding + provider validation screen
+  - home dashboard cards (due/streak/notebooks/sync)
+  - notebook ingestion status panel with progress bars
+  - quick actions + manual sync status panel
 
 ### Sprint 4 Next Coding Items
 
