@@ -37,7 +37,21 @@ func (s *Service) Enqueue(event Event) error {
 		CreatedAt: time.Now().UTC(),
 		Status:    "pending",
 	}
-	return s.queries.Enqueue(item)
+	if err := s.queries.Enqueue(item); err != nil {
+		if isDuplicateEventIDError(err) {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+func isDuplicateEventIDError(err error) bool {
+	if err == nil {
+		return false
+	}
+	lower := strings.ToLower(err.Error())
+	return strings.Contains(lower, "unique constraint") || strings.Contains(lower, "duplicate key")
 }
 
 func validateEvent(event Event) error {

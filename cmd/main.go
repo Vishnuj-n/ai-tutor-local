@@ -105,7 +105,13 @@ func runIngestionSmoke(database *db.Database, vecAvailable bool, filePath, noteb
 	ingestionSvc := ingestion.NewService(database)
 	ingestionSvc.SetVectorStoreEnabled(vecAvailable)
 	if vecAvailable {
-		ingestionSvc.SetEmbedder(embedding.NewClient("http://localhost:11434"))
+		onnxPath := filepath.Join("onnx", "model_int8.onnx")
+		onnxEmbedder, err := embedding.NewONNXClient(onnxPath)
+		if err != nil {
+			return fmt.Errorf("initialize onnx embedder: %w", err)
+		}
+		defer onnxEmbedder.Close()
+		ingestionSvc.SetEmbedder(onnxEmbedder)
 	}
 
 	doc, err := ingestionSvc.RegisterDocument(ctx, nb.ID, filePath)

@@ -4,3 +4,4 @@ frontend/dist
 # Add this to .gitignore
 onnx/model_int8.onnx
 *.onnx
+.env

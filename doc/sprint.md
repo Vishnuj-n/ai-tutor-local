@@ -12,7 +12,7 @@ Project: Local-First AI Tutoring System (Track A + Track B)
 | Sprint 1 | Track A foundation scaffold | Completed | Go module, schema.sql, DB init, models, queries, module skeletons |
 | Sprint 2 | Current sprint: ingestion to retrieval pipeline baseline | Completed | End-to-end ingestion + FTS retrieval baseline validated; vec path optional with strict mode/fallback |
 | Sprint 3 | FSRS + review workflows + telemetry quality | Completed | FSRS rating workflow, due-card scheduler, session telemetry quality guards implemented |
-| Sprint 4 | Classroom sync stabilization + cloud aggregation validation | Planned | Retry, dedup, dashboard consistency |
+| Sprint 4 | Classroom sync stabilization + cloud aggregation validation | In Progress | Started with ONNX embedding runtime migration + sync stabilization kickoff |
 | Sprint 5 | Release hardening | Planned | Performance, security, E2E regression suite |
 
 ## Completed Work (Already Done)
@@ -225,6 +225,22 @@ Status: Completed on 2026-03-21.
   - Start in Sprint 4 (immediately after backend Sprint 3 completion).
   - Sprint 4 target: bootstrap Wails app shell + core screens for Notebook list, document ingestion status, due cards/review flow, and sync status.
   - Sprint 5 target: polish, UX hardening, and end-to-end desktop packaging.
+
+## Sprint 4 Kickoff (2026-03-21)
+
+### Started In This Pass
+
+- Replaced ingestion embedder wiring to use local ONNX client (`onnx/model_int8.onnx`) instead of Ollama in smoke ingestion flow.
+- Added real ONNX embedding client under `internal/embedding` using ONNX Runtime session execution.
+- Added focused ONNX integration test validating embedding output shape contract (`768` dims).
+- Added sync queue dedup guard: duplicate `event_id` enqueue is now idempotent (no duplicate row, no hard failure).
+- Added sync service tests for dedup behavior and event metric validation guardrails.
+
+### Sprint 4 Next Coding Items
+
+- Add sync queue dedup key strategy for idempotent cloud aggregation.
+- Add retry backoff policy and max-attempt state transitions in sync worker.
+- Add dashboard consistency checks (local aggregated counters vs queued events).
 
 ## Sprint 2 Delta (Completed in this pass)
 
