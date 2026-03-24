@@ -18,7 +18,7 @@ type DashboardSnapshot struct {
 	Notebooks       []NotebookSummary    `json:"notebooks"`
 	Ingestion       []IngestionStatusRow `json:"ingestion"`
 	SyncStatusText  string               `json:"sync_status_text"`
-	GeneratedAt     time.Time            `json:"generated_at"`
+	GeneratedAtMs   int64                `json:"generated_at_ms"`
 }
 
 type NotebookSummary struct {
@@ -46,7 +46,7 @@ func NewDashboardService(database *db.Database) *DashboardService {
 // GetSnapshot returns a consolidated dashboard summary for home screen rendering.
 func (s *DashboardService) GetSnapshot(ctx context.Context) (*DashboardSnapshot, error) {
 	now := time.Now().UTC()
-	snapshot := &DashboardSnapshot{GeneratedAt: now}
+	snapshot := &DashboardSnapshot{GeneratedAtMs: now.UnixMilli()}
 
 	if err := s.database.DB.WithContext(ctx).Raw(`
 SELECT COUNT(1)

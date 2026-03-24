@@ -112,12 +112,6 @@
             <button class="btn" id="open-rag">Ask a Question</button>
             <button class="btn">Classroom Sync</button>
           </div>
-
-          <div class="sync-box">
-            <h4>Sync Status</h4>
-            <p id="sync-status">Periodic sync every 15 minutes. Last run: 2 min ago.</p>
-            <button class="btn" id="sync-now">Run Manual Sync</button>
-          </div>
         </article>
       </div>
     </section>
@@ -165,6 +159,12 @@
       </article>
     </section>
   </main>
+
+  <footer class="app-footer">
+    <span id="sync-status-indicator" class="sync-indicator">●</span>
+    <span id="sync-status-text">Sync: Periodic (15 min). Ready.</span>
+    <button class="sync-btn" id="sync-now">Sync Now</button>
+  </footer>
 
   <script src="app.js"></script>
 </body>

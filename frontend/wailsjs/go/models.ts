@@ -42,8 +42,7 @@ export namespace ui {
 	    notebooks: NotebookSummary[];
 	    ingestion: IngestionStatusRow[];
 	    sync_status_text: string;
-	    // Go type: time
-	    generated_at: any;
+	    generated_at_ms: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new DashboardSnapshot(source);
@@ -58,7 +57,7 @@ export namespace ui {
 	        this.notebooks = this.convertValues(source["notebooks"], NotebookSummary);
 	        this.ingestion = this.convertValues(source["ingestion"], IngestionStatusRow);
 	        this.sync_status_text = source["sync_status_text"];
-	        this.generated_at = this.convertValues(source["generated_at"], null);
+	        this.generated_at_ms = source["generated_at_ms"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

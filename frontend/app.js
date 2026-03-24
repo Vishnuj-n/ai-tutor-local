@@ -5,8 +5,9 @@ const providerStatus = document.getElementById("provider-status");
 
 const ingestionList = document.getElementById("ingestion-list");
 const simulateUploadBtn = document.getElementById("simulate-upload");
-const syncNowBtn = document.getElementById("sync-now");
-const syncStatus = document.getElementById("sync-status");
+const syncNowFooterBtn = document.getElementById("sync-now");
+const syncStatusText = document.getElementById("sync-status-text");
+const syncStatusIndicator = document.getElementById("sync-status-indicator");
 const enterDashboardBtn = document.getElementById("enter-dashboard");
 const reviewPanel = document.getElementById("review-panel");
 const ragPanel = document.getElementById("rag-panel");
@@ -32,41 +33,67 @@ const notebooks = [
   { name: "History", file: "Modern_India.txt", progress: 34, state: "processing" },
 ];
 
-function applySnapshot(snapshot) {
+async function applySnapshot(snapshot) {
   if (!snapshot) {
     return;
   }
 
-  if (typeof snapshot.due_today === "number") {
-    document.getElementById("due-count").textContent = String(snapshot.due_today);
+  if (typeof snapshot.DueToday === "number") {
+    document.getElementById("due-count").textContent = String(snapshot.DueToday);
   }
 
-  if (typeof snapshot.study_streak_days === "number") {
-    document.getElementById("streak-count").textContent = `${snapshot.study_streak_days} days`;
+  if (typeof snapshot.StudyStreak === "number") {
+    document.getElementById("streak-count").textContent = `${snapshot.StudyStreak} days`;
   }
 
-  if (typeof snapshot.active_notebooks === "number") {
-    document.getElementById("notebook-count").textContent = String(snapshot.active_notebooks);
+  if (typeof snapshot.ActiveNotebooks === "number") {
+    document.getElementById("notebook-count").textContent = String(snapshot.ActiveNotebooks);
   }
 
-  if (typeof snapshot.pending_sync === "number") {
-    document.getElementById("sync-count").textContent = `${snapshot.pending_sync} pending`;
+  if (typeof snapshot.PendingSync === "number") {
+    document.getElementById("sync-count").textContent = `${snapshot.PendingSync} pending`;
   }
 
-  if (typeof snapshot.sync_status_text === "string" && snapshot.sync_status_text.trim()) {
-    syncStatus.textContent = snapshot.sync_status_text;
+  if (typeof snapshot.SyncStatusText === "string" && snapshot.SyncStatusText.trim()) {
+    syncStatusText.textContent = `Sync: ${snapshot.SyncStatusText}`;
+    syncStatusIndicator.classList.remove("error", "idle");
+    syncStatusIndicator.classList.add("pulse");
   }
 
-  if (Array.isArray(snapshot.ingestion) && snapshot.ingestion.length > 0) {
+  if (Array.isArray(snapshot.Notebooks) && snapshot.Notebooks.length > 0) {
     notebooks.length = 0;
-    snapshot.ingestion.forEach((row) => {
-      notebooks.push({
-        name: row.notebook_name || "Notebook",
-        file: row.filename || "Unknown",
-        progress: typeof row.progress_pct === "number" ? row.progress_pct : 0,
-        state: row.status || "pending",
-      });
+    snapshot.Notebooks.forEach((nb) => {
+      if (Array.isArray(nb.IngestionRows)) {
+        nb.IngestionRows.forEach((row) => {
+          notebooks.push({
+            name: nb.Name || "Notebook",
+            file: row.Filename || "Unknown",
+            progress: typeof row.ProgressPct === "number" ? row.ProgressPct : 0,
+            state: row.Status || "pending",
+          });
+        });
+      }
     });
+  }
+}
+
+async function loadSnapshot() {
+  try {
+    // Try to load from Wails binding if available
+    if (window.go && window.go.main && window.go.main.App) {
+      const snapshot = await window.go.main.App.GetDashboardSnapshot();
+      if (snapshot) {
+        applySnapshot(snapshot);
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn("Wails binding not ready yet:", err);
+  }
+
+  // Fallback: use pre-rendered snapshot if set by backend
+  if (window.__AI_TUTOR_SNAPSHOT__) {
+    applySnapshot(window.__AI_TUTOR_SNAPSHOT__);
   }
 }
 
@@ -112,10 +139,12 @@ onboardingForm.addEventListener("submit", (event) => {
   providerStatus.classList.add(result.ok ? "ok" : "err");
 });
 
-enterDashboardBtn.addEventListener("click", () => {
+enterDashboardBtn.addEventListener("click", async () => {
   onboardingPanel.classList.add("hidden");
   dashboardPanel.classList.remove("hidden");
   renderIngestionList();
+  // Try to load real snapshot from backend
+  await loadSnapshot();
 });
 
 simulateUploadBtn.addEventListener("click", () => {
@@ -128,11 +157,29 @@ simulateUploadBtn.addEventListener("click", () => {
   renderIngestionList();
 });
 
-syncNowBtn.addEventListener("click", () => {
-  syncStatus.textContent = "Manual sync started... queue dedup + retry policy active.";
+syncNowFooterBtn.addEventListener("click", async () => {
+  syncStatusText.textContent = "Sync: Starting manual sync...";
+  syncStatusIndicator.classList.remove("idle", "error");
+  syncStatusIndicator.classList.add("pulse");
+  
+  try {
+    if (window.go && window.go.main && window.go.main.App) {
+      // Call backend RPC if available
+      const result = await window.go.main.App.RunManualSync();
+      syncStatusText.textContent = `Sync: Complete. ${result || "Ready."}`;
+    } else {
+      // Demo mode
+      syncStatusText.textContent = "Sync: Demo mode - queued 4 events, 0 duplicates detected.";
+    }
+  } catch (err) {
+    console.error("Sync error:", err);
+    syncStatusText.textContent = "Sync: Error. Check console.";
+    syncStatusIndicator.classList.add("error");
+  }
+  
   setTimeout(() => {
-    syncStatus.textContent = "Manual sync complete. 4 events sent, 0 duplicates, dashboard consistent.";
-  }, 1000);
+    syncStatusIndicator.classList.remove("pulse");
+  }, 2000);
 });
 
 function showPanel(panel) {
@@ -186,7 +233,13 @@ runRagBtn.addEventListener("click", () => {
   }, 650);
 });
 
-// Wails bridge can set this object before app bootstrap.
+// App lifecycle: try to load snapshot on startup
+document.addEventListener("DOMContentLoaded", async () => {
+  // Pre-render fallback or Wails binding will load on first dashboard show
+  renderIngestionList();
+});
+
+// Detect when Wails bindings become available and auto-load snapshot
 if (window.__AI_TUTOR_SNAPSHOT__) {
   applySnapshot(window.__AI_TUTOR_SNAPSHOT__);
 }

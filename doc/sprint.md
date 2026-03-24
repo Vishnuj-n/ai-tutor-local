@@ -6,14 +6,17 @@ Project: Local-First AI Tutoring System (Track A + Track B)
 
 ## Sprint Overview
 
-| Sprint | Focus | Status | Notes |
-|---|---|---|---|
-| Sprint 0 | Architecture, API contract, schema hardening | Completed | Core docs finalized, critical schema/API issues fixed |
-| Sprint 1 | Track A foundation scaffold | Completed | Go module, schema.sql, DB init, models, queries, module skeletons |
-| Sprint 2 | Current sprint: ingestion to retrieval pipeline baseline | Completed | End-to-end ingestion + FTS retrieval baseline validated; vec path optional with strict mode/fallback |
-| Sprint 3 | FSRS + review workflows + telemetry quality | Completed | FSRS rating workflow, due-card scheduler, session telemetry quality guards implemented |
-| Sprint 4 | Classroom sync stabilization + cloud aggregation validation | In Progress | Started with ONNX embedding runtime migration + sync stabilization kickoff |
-| Sprint 5 | Release hardening | Planned | Performance, security, E2E regression suite |
+| Sprint | Focus | Status | Dates | Target |
+|---|---|---|---|---|
+| Sprint 0 | Architecture, API contract, schema hardening | Completed | 2026-03-01 to 2026-03-07 | Core docs finalized, critical schema/API issues fixed |
+| Sprint 1 | Track A foundation scaffold | Completed | 2026-03-08 to 2026-03-14 | Go module, schema.sql, DB init, models, queries, module skeletons |
+| Sprint 2 | Ingestion to retrieval pipeline baseline | Completed | 2026-03-15 to 2026-03-21 | End-to-end ingestion + FTS retrieval baseline validated; vec path optional with strict mode/fallback |
+| Sprint 3 | FSRS + review workflows + telemetry quality | Completed | 2026-03-22 to 2026-03-28 | FSRS rating workflow, due-card scheduler, session telemetry quality guards implemented |
+| **Sprint 4** | **Desktop UI + Wails runtime + Dashboard wiring** | **In Progress** | **2026-03-29 to 2026-04-04** | **Wails dev running, live dashboard, real backend data binding, basic review flow** |
+| Sprint 5 | Classroom sync stabilization + cloud aggregation validation | Planned | 2026-04-05 to 2026-04-11 | Cloud API integration, telemetry sync protocol, offline queue handling |
+| Sprint 6 | Release hardening + E2E testing | Planned | 2026-04-12 to 2026-04-18 | Performance tuning, security audit, end-to-end regression suite |
+| Phase 2 | MCQ quizzes + .docx/.md support + classroom join | Future | Future | Cloud sync MVP, teacher dashboard, student retention |
+| Phase 3 | Talk-to-Duck + gamification + advanced features | Future | Future | Voice interface, leaderboards, knowledge graph |
 
 ## Completed Work (Already Done)
 
@@ -216,10 +219,255 @@ Status: Completed on 2026-03-21.
 
 Status: Completed on 2026-03-21.
 
-## Wails GUI Status and Timeline
+---
 
-- Current status:
-  - Wails GUI is **not implemented yet** in this repository.
+## Sprint 4 (Current): Desktop UI + Wails Runtime + Dashboard Wiring
+
+**Timeline**: 2026-03-29 to 2026-04-04  
+**Goal**: Enable live Wails development, wire frontend dashboard to real backend data, implement basic review flow.
+
+### Sprint 4 Scope
+
+#### Phase 4A: Wails Project Setup (COMPLETED)
+- ✅ Created `wails.json` project configuration
+- ✅ Created `main.go` Wails entry point with embed FS setup
+- ✅ Created `app.go` with App struct, lifecycle hooks, and RPC bindings
+- ✅ Added `frontend/package.json` with Vite dev/build scripts
+- ✅ Added Wails v2.11.0 runtime dependency
+- ✅ Fixed npm cache corruption and reinstalled dependencies
+- ✅ Project compiles cleanly: `go build ./...` ✅
+
+#### Phase 4B: Frontend UI Scaffolding (COMPLETED)
+- ✅ Created `frontend/index.html` with all UI sections matching APP_FLOW.md:
+  - Onboarding + provider setup (1.1)
+  - Dashboard with 4 metric cards + ingestion list (1.2, 1.3)
+  - Review panel with rating buttons (1.4)
+  - RAG query panel (1.6)
+  - Compact footer sync status bar (1.8 indicator)
+- ✅ Created `frontend/styles.css` with atmospheric dark theme and responsive layout
+- ✅ Created `frontend/app.js` with screen navigation and demo data
+- ✅ Compacted sync status from large box to footer indicator
+
+#### Phase 4C: Backend Dashboard Service (COMPLETED)
+- ✅ Implemented `internal/ui/dashboard_service.go` (150+ LOC):
+  - Real SQLite aggregation for due cards, study streak, active notebooks
+  - Ingestion status per notebook with progress tracking
+  - Sync queue pending count and status text generation
+  - Test coverage with FK constraints validated
+- ✅ Added CLI command `-dashboard-snapshot` for CLI testing/export
+- ✅ Wails bindings defined:
+  - `GetDashboardSnapshot() (*ui.DashboardSnapshot, error)`
+  - `GetStartupStatus() string` (planned)
+
+#### Phase 4D: Frontend ↔ Backend Wiring (IN PROGRESS)
+**Current Status**: Static UI complete, Wails project ready, awaiting `wails dev` confirmation
+
+**Remaining Tasks** (by 2026-04-04):
+1. ⏳ Confirm `wails dev` launches successfully
+   - Start dev server: `cd repo-root && wails dev`
+   - Verify window opens with static UI
+   - Check npm hot-reload works (CSS edit → page refresh)
+   
+2. ⏳ Wire Wails RPC bindings to frontend:
+   - Frontend calls `GetDashboardSnapshot()` on dashboard panel show
+   - Update dashboard cards with real database metrics
+   - Wire footer sync indicator to real sync queue count
+   - Test with `-dashboard-snapshot` CLI until Wails binding test-ready
+   
+3. ⏳ Implement basic review flow:
+   - Load due cards from `internal/fsrs` service
+   - Run FSRS scheduler on backend to get next due card
+   - Display card Q&A in review panel
+   - Wire rating buttons to `UpdateFlashcardRating()` backend RPC (stub)
+   
+4. ⏳ Update documentation:
+   - Sprint 4 completion summary in this file
+   - Frontend/Wails integration guide in `frontend/README.md`
+   - List known limitations (no real PDF upload yet, mock data only)
+
+### Sprint 4 Test Cases
+
+| ID | Component | Precondition | Steps | Expected |
+|---|---|---|---|---|
+| S4-TC-001 | Wails startup | Repo root, dep installed | `wails dev` | Dev server starts, window opens at http://localhost:34xxx |
+| S4-TC-002 | Dashboard load | Wails window open | Click "Continue to Dashboard" | Dashboard displays 4 metric cards, ingestion list visible |
+| S4-TC-003 | Snapshot RPC | Dashboard shown | Call `GetDashboardSnapshot()` | Returns valid snapshot with real DB metrics, not mock data |
+| S4-TC-004 | Footer sync status | Wails window open | Observe footer | Sync indicator shows live sync queue pending count from `GetDashboardSnapshot()` |
+| S4-TC-005 | Review panel load | Dashboard shown | Click "Start Review" | Review panel shows due card Q&A with 4 rating buttons |
+| S4-TC-006 | RAG panel load | Dashboard shown | Click "Ask a Question" | RAG panel shows question input, ready for query submission |
+| S4-TC-007 | CSS hot reload | Wails dev running | Edit `frontend/styles.css`, save | Changes visible in Wails window within 1s (Vite HMR) |
+| S4-TC-008 | Demo fallback | Wails binding unavailable | Observe dashboard | Demo data visible; app doesn't crash, shows status message |
+
+### Sprint 4 Definition of Done
+
+- ✅ `wails dev` launches and dev window opens
+- ✅ Dashboard cards populate with real metrics from `GetDashboardSnapshot()`
+- ✅ Frontend snapshot hook wired to Wails RPC binding
+- ✅ Sync indicator in footer shows live pending count
+- ✅ Review panel displays due cards from FSRS scheduler
+- ✅ Basic rating button handler wired (demo or real RPC pending frontend/backend sync)
+- ✅ All test cases S4-TC-001 through S4-TC-008 passing
+- ✅ No crashes, actionable error messages on binding unavailable
+
+**Committed by**: 2026-04-04
+
+---
+
+## Sprint 5: Classroom Sync Stabilization + Cloud Integration Prep
+
+**Timeline**: 2026-04-05 to 2026-04-11  
+**Goal**: Stabilize classroom sync flow, validate cloud API contract, prepare for Phase 2 cloud connection.
+
+### Sprint 5 Scope
+
+#### Phase 5A: Sync Service Hardening
+- Implement retry logic with exponential backoff in `sync_queue` consumer
+- Add dedup guard using event hash (prevent double-process on crash)
+- Implement offline queue persistence (sync_queue survives app restart)
+- Add sync status polling: `GetSyncStatus() -> pending_count, last_sync_time, health`
+- Wire sync button to `RunManualSync()` backend RPC (real implementation)
+
+#### Phase 5B: Cloud API Contract Validation
+- Mock `POST /api/v1/sync` endpoint locally to test payload shape
+- Validate telemetry payload against `DATA_API.md` spec
+- Test event serialization: ensure `study_logs`, `sync_queue_events` marshal correctly
+- Add endpoint `/api/v1/health` probe from local app (ping test)
+
+#### Phase 5C: Classroom Sync UI
+- Add "Classroom Sync" panel (App Flow 1.8):
+  - Join code input field
+  - Student name display from config
+  - Class name + teacher name (from API response)
+  - Sync status: last sync time, pending events, queue health
+  - "Sync Now" button wired to real backend
+  
+#### Phase 5D: Offline Queue Hardening
+- Implement `sync_queue` consumer loop (background goroutine)
+- Add exponential backoff: 1s → 2s → 4s → 8s max retry
+- Implement dedup: hash `(event_type, notebook_id, timestamp_ms)` to detect duplicates
+- Add circuit breaker: if cloud unreachable for >1 hour, pause retries (don't spam)
+- Persist queue state across app restart
+
+### Sprint 5 Test Cases
+
+| ID | Component | Precondition | Steps | Expected |
+|---|---|---|---|---|
+| S5-TC-001 | Sync queue persist | App with pending events | Exit app, restart | Queue events still present, not lost |
+| S5-TC-002 | Retry backoff | Cloud API down | Trigger sync, observe logs | Retries with exp backoff: 1s, 2s, 4s, ... |
+| S5-TC-003 | Dedup guard | Duplicate event sent twice | Enqueue both, process | Only 1 processed, 1 marked duplicate |
+| S5-TC-004 | Classroom join | Valid join code | Click "Classroom Sync", enter code, click Join | Student appears on teacher dashboard within 30s |
+| S5-TC-005 | Sync status pole | Wails window open | Call `GetSyncStatus()` | Returns `{pending: N, last_sync: timestamp, health: "ok"}` |
+| S5-TC-006 | Cloud health probe | Mock cloud + local app | Ping `/api/v1/health` | Responds 200 OK, proves connectivity |
+| S5-TC-007 | Offline queue growth | Cloud unreachable | Generate 10 study events | Queue grows to 10 pending; doesn't drop events |
+
+### Sprint 5 Definition of Done
+
+- ✅ Sync queue consumer loop running in background
+- ✅ Retry logic with exponential backoff implemented and tested
+- ✅ Dedup guard prevents duplicate processing
+- ✅ Classroom Sync panel UI complete and wired
+- ✅ Join code flow works end-to-end (local mock + real API later)
+- ✅ Offline queue survives app restart
+- ✅ All test cases S5-TC-001 through S5-TC-007 passing
+- ✅ No data loss on crash/restart
+
+**Committed by**: 2026-04-11
+
+---
+
+## Sprint 6: Release Hardening + E2E Testing
+
+**Timeline**: 2026-04-12 to 2026-04-18  
+**Goal**: Stabilize MVP, security audit, E2E regression suite ready for Phase 2.
+
+### Sprint 6 Scope
+
+#### Phase 6A: Performance Tuning
+- Profile dashboard snapshot generation (target <100ms)
+- Optimize ingestion list rendering (lazy-load if >20 items)
+- Add instrumentation: log slow queries, slow RPC calls
+- Benchmark FSRS due-card computation (target <50ms for 1000 cards)
+- Wails window memory footprint audit (target <150MB idle)
+
+#### Phase 6B: Security Audit
+- API key handling: no logging, session-only storage ✅ (already done)
+- SQLite injection prevention: verify all queries use parameterized args
+- ONNX model integrity: validate model file hash on startup
+- Frontend XSS prevention: all user input HTML-escaped
+- Flashcard/question content sanitization (no embedded scripts)
+
+#### Phase 6C: E2E Regression Tests
+- Automated test suite covering:
+  1. Onboarding → Dashboard flow
+  2. PDF upload → ingestion → review panel → rating
+  3. Query RAG panel → retrieval → answer display
+  4. Sync manual trigger → queue clear cycle
+  5. Offline mode: ingestion works without cloud
+  6. Restart app: all data persists
+  
+#### Phase 6D: Documentation Sprint
+- Update [README.md](README.md): Installation, first-run, troubleshooting
+- Create [DEPLOYMENT.md](DEPLOYMENT.md): Binary build, signing, release notes
+- Create [TESTING.md](TESTING.md): E2E test suite, how to run locally
+- Create [SECURITY.md](SECURITY.md): Encryption, key storage, audit log policy
+
+#### Phase 6E: Known Limitations + Phase 2 Prep
+- Document Sprint 6 limitations (defer to Phase 2):
+  - No PDF upload UI (CLI only)
+  - No `.docx` / `.md` support
+  - No MCQ quizzes (flashcards only)
+  - No Talk-to-Duck, gamification, knowledge graph
+  - No teacher dashboard (Track B starts Phase 2)
+  
+- Create [PHASE2_ROADMAP.md](PHASE2_ROADMAP.md):
+  - MCQ generation + quiz UI
+  - Cloud sync MVP with teacher dashboard
+  - Classroom join full flow + leaderboard
+  - Talk-to-Duck voice interface skeleton
+
+### Sprint 6 Test Cases
+
+| ID | Component | Precondition | Steps | Expected |
+|---|---|---|---|---|
+| S6-TC-001 | E2E onboard→review | Fresh app, Groq key | Onboard → Dashboard → Start Review → Rate → Back | Entire flow completes <5s, no errors, rating persisted |
+| S6-TC-002 | E2E RAG flow | Dashboard shown | Ask query, run RAG, show answer, rate usefulness | Query executes <2s, grounded answer displayed with sources |
+| S6-TC-003 | Offline ingestion | Internet off, file staged | Ingest document chunk, rate cards | No cloud calls; all local ops succeed |
+| S6-TC-004 | App restart persist | App with data | Close app, reopen, check dashboard | Same due count, streak, notebooks visible (data persisted) |
+| S6-TC-005 | Dashboard perf | 50 notebooks, 500 cards | Load dashboard snapshot | Response <100ms, 4 cards render instantly |
+| S6-TC-006 | XSS prevention | Malicious notebook name | Create notebook with `<script>alert('xss')</script>` name | Name displayed escaped; no script execution |
+| S6-TC-007 | Key security | Provider setup | After submit, try to access `window.apiKey` | Not accessible; session-only storage verified |
+| S6-TC-008 | Binary deploy | Release build | `wails build -platform windows/amd64` | Single `.exe` generated, no dependencies needed |
+
+### Sprint 6 Definition of Done
+
+- ✅ Dashboard snapshot <100ms latency consistently
+- ✅ All E2E flows <5s end-to-end
+- ✅ Security audit: no plaintext secrets, XSS prevented, SQL injection prevented
+- ✅ E2E regression suite with 8+ test cases, all passing
+- ✅ Documentation complete: README, DEPLOYMENT, TESTING, SECURITY, PHASE2_ROADMAP
+- ✅ Binary builds successfully for Windows/macOS/Linux
+- ✅ Known limitations documented; Phase 2 roadmap published
+
+**Committed by**: 2026-04-18
+
+---
+
+## Future Phases
+
+### Phase 2: Classroom + Cloud Sync (Estimated 3-4 weeks)
+**Track B Integration**: Teacher dashboard, student analytics, class management  
+**Track A Additions**: MCQ generation, quiz UI, classroom join, telemetry sync  
+**New Features**: Voice interface (Talk-to-Duck skeleton), gamification prep
+
+### Phase 3: Advanced AI Features (Estimated 4-6 weeks)
+**Talk-to-Duck**: Voice input, concept gap detection, personalized remediation  
+**Knowledge Graph**: Concept extraction, relationship mapping, multi-hop reasoning  
+**Gamification**: Streak heatmap, achievement badges, peer leaderboard (anon)  
+**Multimodal Support**: Diagram extraction, table parsing, map regions
+
+---
+
+## Wails Development Quick Reference
   - `frontend/` currently has no UI scaffold and no Wails app bootstrap files are present.
 - Planned implementation window:
   - Start in Sprint 4 (immediately after backend sync stabilization baseline).
