@@ -260,11 +260,27 @@ Status: Completed on 2026-03-21.
   - `GetStartupStatus() string` (planned)
 
 #### Phase 4D: Frontend ↔ Backend Wiring (IN PROGRESS)
-**Current Status**: Static UI complete, Wails project ready, awaiting `wails dev` confirmation
+**Current Status**: Wails bindings active, dashboard/sync/review/upload RPC wiring in place, final QA pending
+
+### Phase 4D Continuation (2026-03-24)
+
+- Added real review RPC path in `app.go`:
+  - `GetNextDueCard()` loads next due flashcard from DB queue
+  - `RateDueCard()` applies FSRS rating update via `internal/fsrs`
+- Added real ingestion RPC path in `app.go`:
+  - `IngestDocument(filePath, notebookName)` registers and processes `.pdf/.txt/.md`
+  - auto-creates notebook if missing
+  - seeds starter flashcards from ingested chunks for immediate review workflow
+- Wired frontend (`frontend/app.js`) to backend:
+  - Upload button now prompts for file path + notebook and calls `IngestDocument()`
+  - Start Review calls `GetNextDueCard()` and renders real card data
+  - Rating buttons call `RateDueCard()` and fetch next due card
+- Updated frontend bundling compatibility:
+  - switched script tag to module mode in `frontend/index.html` to remove Vite bundling warning
 
 **Remaining Tasks** (by 2026-04-04):
 1. ⏳ Confirm `wails dev` launches successfully
-   - Start dev server: `cd repo-root && wails dev`
+  - Start dev server: `cd repo-root && wails dev -tags "sqlite_fts5"`
    - Verify window opens with static UI
    - Check npm hot-reload works (CSS edit → page refresh)
    
@@ -275,21 +291,21 @@ Status: Completed on 2026-03-21.
    - Test with `-dashboard-snapshot` CLI until Wails binding test-ready
    
 3. ⏳ Implement basic review flow:
-   - Load due cards from `internal/fsrs` service
-   - Run FSRS scheduler on backend to get next due card
-   - Display card Q&A in review panel
-   - Wire rating buttons to `UpdateFlashcardRating()` backend RPC (stub)
+  - ✅ Load due cards from backend queue (`GetNextDueCard()`)
+  - ✅ Apply FSRS rating updates via `RateDueCard()`
+  - ✅ Display real card Q&A in review panel
+  - ⏳ Add session-complete summary event from UI review loop (optional polish)
    
 4. ⏳ Update documentation:
    - Sprint 4 completion summary in this file
    - Frontend/Wails integration guide in `frontend/README.md`
-   - List known limitations (no real PDF upload yet, mock data only)
+  - List known limitations (native picker available with manual path prompt fallback)
 
 ### Sprint 4 Test Cases
 
 | ID | Component | Precondition | Steps | Expected |
 |---|---|---|---|---|
-| S4-TC-001 | Wails startup | Repo root, dep installed | `wails dev` | Dev server starts, window opens at http://localhost:34xxx |
+| S4-TC-001 | Wails startup | Repo root, dep installed | `wails dev -tags "sqlite_fts5"` | Dev server starts, window opens at http://localhost:34xxx |
 | S4-TC-002 | Dashboard load | Wails window open | Click "Continue to Dashboard" | Dashboard displays 4 metric cards, ingestion list visible |
 | S4-TC-003 | Snapshot RPC | Dashboard shown | Call `GetDashboardSnapshot()` | Returns valid snapshot with real DB metrics, not mock data |
 | S4-TC-004 | Footer sync status | Wails window open | Observe footer | Sync indicator shows live sync queue pending count from `GetDashboardSnapshot()` |

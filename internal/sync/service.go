@@ -16,10 +16,10 @@ type Service struct {
 }
 
 type SyncStatus struct {
-	PendingCount  int64      `json:"pending_count"`
-	LastSyncTime  *time.Time `json:"last_sync_time,omitempty"`
-	Health        string     `json:"health"`
-	NextRetryInMS int64      `json:"next_retry_in_ms"`
+	PendingCount  int64  `json:"pending_count"`
+	LastSyncTime  string `json:"last_sync_time,omitempty"`
+	Health        string `json:"health"`
+	NextRetryInMS int64  `json:"next_retry_in_ms"`
 }
 
 type ManualSyncResult struct {
@@ -54,6 +54,10 @@ func (s *Service) GetStatus() (*SyncStatus, error) {
 	now := time.Now().UTC()
 	minRetryDelay := int64(0)
 	health := "ok"
+	lastSync := ""
+	if lastSyncAt != nil {
+		lastSync = lastSyncAt.UTC().Format(time.RFC3339)
+	}
 	if pendingCount > 0 {
 		health = "backlog"
 	}
@@ -70,7 +74,7 @@ func (s *Service) GetStatus() (*SyncStatus, error) {
 
 	return &SyncStatus{
 		PendingCount:  pendingCount,
-		LastSyncTime:  lastSyncAt,
+		LastSyncTime:  lastSync,
 		Health:        health,
 		NextRetryInMS: minRetryDelay,
 	}, nil

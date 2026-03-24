@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -203,13 +204,58 @@ func (q *SyncQueueQueries) ListPending(limit int) ([]SyncQueueItem, error) {
 }
 
 func (q *SyncQueueQueries) ListRetryable(limit int) ([]SyncQueueItem, error) {
-	var items []SyncQueueItem
+	type syncQueueRow struct {
+		ID          string         `gorm:"column:id"`
+		Payload     string         `gorm:"column:payload"`
+		CreatedAt   sql.NullString `gorm:"column:created_at"`
+		Attempts    int            `gorm:"column:attempts"`
+		LastAttempt sql.NullString `gorm:"column:last_attempt"`
+		Status      string         `gorm:"column:status"`
+	}
+
+	rows := make([]syncQueueRow, 0)
 	err := q.db.
+		Table("sync_queue").
+		Select("id, payload, CAST(created_at AS TEXT) AS created_at, attempts, CAST(last_attempt AS TEXT) AS last_attempt, status").
 		Where("status IN ?", []string{"pending", "failed"}).
 		Order("created_at ASC").
 		Limit(limit).
-		Find(&items).Error
-	return items, err
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]SyncQueueItem, 0, len(rows))
+	for _, row := range rows {
+		if !row.CreatedAt.Valid {
+			return nil, fmt.Errorf("missing created_at for sync_queue id=%s", row.ID)
+		}
+
+		createdAt, err := parseSQLiteTimeString(row.CreatedAt.String)
+		if err != nil {
+			return nil, fmt.Errorf("parse created_at for sync_queue id=%s: %w", row.ID, err)
+		}
+
+		var lastAttempt *time.Time
+		if row.LastAttempt.Valid {
+			parsedLastAttempt, err := parseSQLiteTimeString(row.LastAttempt.String)
+			if err != nil {
+				return nil, fmt.Errorf("parse last_attempt for sync_queue id=%s: %w", row.ID, err)
+			}
+			lastAttempt = &parsedLastAttempt
+		}
+
+		items = append(items, SyncQueueItem{
+			ID:          row.ID,
+			Payload:     row.Payload,
+			CreatedAt:   createdAt,
+			Attempts:    row.Attempts,
+			LastAttempt: lastAttempt,
+			Status:      row.Status,
+		})
+	}
+
+	return items, nil
 }
 
 func (q *SyncQueueQueries) MarkAttempt(id, status string) error {
@@ -231,20 +277,61 @@ func (q *SyncQueueQueries) CountPendingAndFailed() (int64, error) {
 }
 
 func (q *SyncQueueQueries) LastSuccessfulSyncAt() (*time.Time, error) {
-	var item SyncQueueItem
+	var row struct {
+		LastAttempt sql.NullString `gorm:"column:last_attempt"`
+	}
 	err := q.db.
+		Table("sync_queue").
+		Select("CAST(last_attempt AS TEXT) AS last_attempt").
 		Where("status = ?", "sent").
 		Where("last_attempt IS NOT NULL").
 		Order("last_attempt DESC").
 		Limit(1).
-		Take(&item).Error
+		Take(&row).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return item.LastAttempt, nil
+
+	if !row.LastAttempt.Valid {
+		return nil, nil
+	}
+
+	parsed, err := parseSQLiteTimeString(row.LastAttempt.String)
+	if err != nil {
+		return nil, fmt.Errorf("parse last successful sync time: %w", err)
+	}
+
+	return &parsed, nil
+}
+
+func parseSQLiteTimeString(value string) (time.Time, error) {
+	trimmed := value
+	if trimmed == "" {
+		return time.Time{}, fmt.Errorf("empty time string")
+	}
+
+	layouts := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02 15:04:05.999999999-07:00",
+		"2006-01-02 15:04:05.999999999",
+		"2006-01-02 15:04:05.999",
+		"2006-01-02 15:04:05",
+	}
+
+	var lastErr error
+	for _, layout := range layouts {
+		parsed, err := time.Parse(layout, trimmed)
+		if err == nil {
+			return parsed.UTC(), nil
+		}
+		lastErr = err
+	}
+
+	return time.Time{}, fmt.Errorf("parse sqlite time %q: %w", trimmed, lastErr)
 }
 
 // StudentConfigQueries provides operations for app configuration.

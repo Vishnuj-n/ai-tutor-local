@@ -8,6 +8,8 @@ This folder contains the initial Wails-target frontend scaffold aligned to `doc/
 - Home dashboard cards
 - Notebook ingestion status list
 - Sync status + manual sync action
+- Review panel wired to real due-card + FSRS rating RPC flow
+- Upload action wired to backend ingestion (`IngestDocument`) using native file picker with manual path prompt fallback
 
 ## Backend Snapshot Bridge
 
@@ -33,7 +35,7 @@ window.__AI_TUTOR_SNAPSHOT__ = {
 
 `frontend/app.js` auto-applies this snapshot if present.
 
-## Snapshot Generation (CLI for now)
+## Snapshot Generation (CLI fallback)
 
 Use from project root:
 
@@ -41,4 +43,4 @@ Use from project root:
 go run -tags "sqlite_fts5" ./cmd -dashboard-snapshot
 ```
 
-Next step is replacing this CLI bridge with direct Wails runtime bindings.
+Wails runtime bindings are now used by default in dashboard/review/sync/upload flows, with CLI snapshot remaining useful for quick diagnostics.

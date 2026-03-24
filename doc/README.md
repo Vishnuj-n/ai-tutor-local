@@ -80,10 +80,10 @@
 # Clone and run
 git clone https://github.com/your-org/ai-tutor-local
 cd ai-tutor-local
-wails dev
+wails dev -tags "sqlite_fts5"
 
 # Production build
-wails build
+wails build -tags "sqlite_fts5"
 ```
 
 ### System B — Cloud (Friend)

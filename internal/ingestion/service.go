@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -112,7 +113,18 @@ func (s *Service) ProcessRegisteredDocument(ctx context.Context, documentID, not
 		return 0, fmt.Errorf("extract text: %w", err)
 	}
 
-	chunks := s.chunker.ChunkText(notebookName, "General", rawText)
+	sections := splitIntoHeadingSections(rawText)
+	chunks := make([]ChunkResult, 0)
+	nextChunkIndex := 0
+	for _, section := range sections {
+		sectionChunks := s.chunker.ChunkText(notebookName, section.Heading, section.Content)
+		for _, chunk := range sectionChunks {
+			chunk.ChunkIndex = nextChunkIndex
+			nextChunkIndex++
+			chunks = append(chunks, chunk)
+		}
+	}
+
 	if len(chunks) == 0 {
 		_ = s.markDocumentError(ctx, documentID, "no text content found for chunking")
 		return 0, fmt.Errorf("no chunkable text found in document")
@@ -228,4 +240,145 @@ func extractTextFromPDF(filePath string) (string, error) {
 	}
 
 	return text, nil
+}
+
+type headingSection struct {
+	Heading string
+	Content string
+}
+
+func splitIntoHeadingSections(rawText string) []headingSection {
+	normalized := strings.ReplaceAll(rawText, "\r\n", "\n")
+	lines := strings.Split(normalized, "\n")
+	sections := make([]headingSection, 0)
+
+	currentHeading := "General"
+	buffer := make([]string, 0, 128)
+
+	flush := func() {
+		content := strings.TrimSpace(strings.Join(buffer, "\n"))
+		if content == "" {
+			buffer = buffer[:0]
+			return
+		}
+		sections = append(sections, headingSection{
+			Heading: currentHeading,
+			Content: content,
+		})
+		buffer = buffer[:0]
+	}
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			if len(buffer) > 0 {
+				buffer = append(buffer, "")
+			}
+			continue
+		}
+
+		if heading, ok := detectHeadingLine(trimmed); ok {
+			flush()
+			currentHeading = heading
+			continue
+		}
+
+		buffer = append(buffer, trimmed)
+	}
+
+	flush()
+
+	if len(sections) == 0 {
+		fallback := strings.TrimSpace(rawText)
+		if fallback == "" {
+			return nil
+		}
+		return []headingSection{{Heading: "General", Content: fallback}}
+	}
+
+	return sections
+}
+
+func detectHeadingLine(line string) (string, bool) {
+	if strings.HasPrefix(line, "#") {
+		heading := strings.TrimSpace(strings.TrimLeft(line, "#"))
+		if len(heading) >= 3 {
+			return heading, true
+		}
+	}
+
+	if strings.HasSuffix(line, ":") && len(line) <= 90 {
+		heading := strings.TrimSuffix(line, ":")
+		heading = strings.TrimSpace(heading)
+		if len(heading) >= 3 {
+			return heading, true
+		}
+	}
+
+	if looksLikeNumberedHeading(line) {
+		return strings.TrimSpace(line), true
+	}
+
+	if isMostlyUpperHeading(line) {
+		return strings.TrimSpace(line), true
+	}
+
+	return "", false
+}
+
+func looksLikeNumberedHeading(line string) bool {
+	if len(line) < 3 || len(line) > 90 {
+		return false
+	}
+
+	parts := strings.Fields(line)
+	if len(parts) < 2 {
+		return false
+	}
+
+	prefix := strings.TrimSpace(parts[0])
+	prefix = strings.TrimSuffix(prefix, ".")
+	prefix = strings.TrimSuffix(prefix, ")")
+	if prefix == "" {
+		return false
+	}
+
+	if _, err := strconv.Atoi(prefix); err == nil {
+		return true
+	}
+
+	roman := strings.ToUpper(prefix)
+	for _, ch := range roman {
+		if !strings.ContainsRune("IVXLCDM", ch) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func isMostlyUpperHeading(line string) bool {
+	if len(line) < 4 || len(line) > 80 {
+		return false
+	}
+
+	letters := 0
+	uppercase := 0
+	for _, ch := range line {
+		if ch >= 'A' && ch <= 'Z' {
+			letters++
+			uppercase++
+			continue
+		}
+		if ch >= 'a' && ch <= 'z' {
+			letters++
+		}
+	}
+
+	if letters < 4 {
+		return false
+	}
+
+	ratio := float64(uppercase) / float64(letters)
+	return ratio >= 0.85
 }

@@ -1,11 +1,13 @@
 :root {
-  --bg: #ffffff;
+  --bg: #f6f8ff;
   --surface: #ffffff;
-  --surface-soft: #fafafa;
-  --ink: #111111;
-  --muted: #616161;
-  --accent: #111111;
-  --border: #e6e6e6;
+  --surface-soft: #f4f7ff;
+  --ink: #142032;
+  --muted: #4f5f79;
+  --accent: #2563eb;
+  --accent-soft: #dbeafe;
+  --accent-2: #14b8a6;
+  --border: #d8e4ff;
   --danger: #c62828;
 }
 
@@ -16,7 +18,10 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg);
+  background:
+    radial-gradient(circle at 8% 12%, #e2ecff 0%, transparent 28%),
+    radial-gradient(circle at 88% 14%, #d6fff5 0%, transparent 24%),
+    linear-gradient(165deg, #f4f7ff 0%, #f8f9ff 58%, #eef7ff 100%);
   color: var(--ink);
   font-family: "IBM Plex Sans", sans-serif;
   display: flex;
@@ -25,7 +30,20 @@ body {
 
 .ambient,
 .grid-overlay {
-  display: none;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ambient {
+  background: linear-gradient(115deg, rgba(37, 99, 235, 0.06), rgba(20, 184, 166, 0.06));
+}
+
+.grid-overlay {
+  background-image: linear-gradient(rgba(62, 93, 157, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(62, 93, 157, 0.06) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: radial-gradient(circle at center, black 24%, transparent 86%);
 }
 
 .app-shell {
@@ -47,7 +65,7 @@ body {
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.08rem;
-  color: var(--muted);
+  color: #2b61bd;
   margin: 0;
   font-size: 0.76rem;
 }
@@ -72,8 +90,15 @@ h1 {
   border-radius: 999px;
   padding: 0.4rem 0.75rem;
   font-size: 0.8rem;
-  background: var(--surface-soft);
+  background: #ffffffd8;
   color: var(--muted);
+}
+
+.topbar-settings {
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border-color: #c6dcff;
+  background: linear-gradient(135deg, #eef4ff, #e8fff9);
 }
 
 .panel {
@@ -81,7 +106,8 @@ h1 {
   border-radius: 12px;
   padding: 1.2rem;
   margin-bottom: 1rem;
-  background: var(--surface);
+  background: #ffffffd9;
+  backdrop-filter: blur(6px);
 }
 
 .panel-head {
@@ -151,20 +177,20 @@ button:focus-visible {
 }
 
 .btn:hover {
-  background: var(--surface-soft);
-  border-color: #d8d8d8;
+  background: #f5f9ff;
+  border-color: #c4d9ff;
 }
 
 .btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: linear-gradient(120deg, var(--accent), #1d4ed8);
+  border-color: #1d4ed8;
   color: #ffffff;
   font-weight: 600;
 }
 
 .btn-primary:hover {
-  background: #2a2a2a;
-  border-color: #2a2a2a;
+  background: linear-gradient(120deg, #1d4ed8, #1e40af);
+  border-color: #1e40af;
 }
 
 .status {
@@ -191,7 +217,7 @@ button:focus-visible {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0.9rem;
-  background: var(--surface-soft);
+  background: linear-gradient(165deg, #ffffff, #f3f8ff);
 }
 
 .value {
@@ -247,7 +273,7 @@ button:focus-visible {
 .progress > span {
   display: block;
   height: 100%;
-  background: #222222;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
   transition: width 320ms ease;
 }
 
@@ -311,7 +337,7 @@ button:focus-visible {
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 1rem;
-  background: #ffffff;
+  background: #ffffffe0;
   border-top: 1px solid var(--border);
   color: var(--muted);
   font-size: 0.85rem;
@@ -353,7 +379,7 @@ button:focus-visible {
 }
 
 .sync-btn:hover {
-  border-color: #cfcfcf;
-  background: var(--surface-soft);
+  border-color: #b8cff8;
+  background: #f0f6ff;
   color: var(--ink);
 }

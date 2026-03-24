@@ -22,6 +22,7 @@
       <div class="topbar-pills">
         <span class="pill">ONNX embeddings</span>
         <span class="pill">API generation</span>
+        <button class="btn topbar-settings hidden" id="open-settings" type="button">Settings</button>
       </div>
     </header>
 
@@ -59,6 +60,7 @@
         <div class="full-width form-actions">
           <button type="submit" class="btn btn-primary">Validate Provider</button>
           <button type="button" id="enter-dashboard" class="btn">Continue to Dashboard</button>
+          <button type="button" id="back-from-settings" class="btn hidden">Back to Dashboard</button>
         </div>
         <p id="provider-status" class="status">Provider not validated.</p>
       </form>
@@ -97,7 +99,7 @@
         <article class="surface">
           <div class="surface-head">
             <h3>Notebook Ingestion Status</h3>
-            <button class="btn" id="simulate-upload">Simulate Upload</button>
+            <button class="btn" id="simulate-upload">Upload File</button>
           </div>
           <ul id="ingestion-list" class="list"></ul>
         </article>
@@ -166,6 +168,6 @@
     <button class="sync-btn" id="sync-now">Sync Now</button>
   </footer>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
