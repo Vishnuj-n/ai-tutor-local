@@ -1,3 +1,45 @@
+export namespace sync {
+	
+	export class SyncStatus {
+	    pending_count: number;
+	    // Go type: time
+	    last_sync_time?: any;
+	    health: string;
+	    next_retry_in_ms: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SyncStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.pending_count = source["pending_count"];
+	        this.last_sync_time = this.convertValues(source["last_sync_time"], null);
+	        this.health = source["health"];
+	        this.next_retry_in_ms = source["next_retry_in_ms"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace ui {
 	
 	export class IngestionStatusRow {

@@ -202,6 +202,16 @@ func (q *SyncQueueQueries) ListPending(limit int) ([]SyncQueueItem, error) {
 	return items, err
 }
 
+func (q *SyncQueueQueries) ListRetryable(limit int) ([]SyncQueueItem, error) {
+	var items []SyncQueueItem
+	err := q.db.
+		Where("status IN ?", []string{"pending", "failed"}).
+		Order("created_at ASC").
+		Limit(limit).
+		Find(&items).Error
+	return items, err
+}
+
 func (q *SyncQueueQueries) MarkAttempt(id, status string) error {
 	return q.db.Model(&SyncQueueItem{}).
 		Where("id = ?", id).
@@ -210,6 +220,31 @@ func (q *SyncQueueQueries) MarkAttempt(id, status string) error {
 			"attempts":     gorm.Expr("attempts + 1"),
 			"last_attempt": time.Now().UTC(),
 		}).Error
+}
+
+func (q *SyncQueueQueries) CountPendingAndFailed() (int64, error) {
+	var count int64
+	err := q.db.Model(&SyncQueueItem{}).
+		Where("status IN ?", []string{"pending", "failed"}).
+		Count(&count).Error
+	return count, err
+}
+
+func (q *SyncQueueQueries) LastSuccessfulSyncAt() (*time.Time, error) {
+	var item SyncQueueItem
+	err := q.db.
+		Where("status = ?", "sent").
+		Where("last_attempt IS NOT NULL").
+		Order("last_attempt DESC").
+		Limit(1).
+		Take(&item).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return item.LastAttempt, nil
 }
 
 // StudentConfigQueries provides operations for app configuration.

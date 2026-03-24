@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -14,10 +15,116 @@ type Service struct {
 	queries *db.SyncQueueQueries
 }
 
+type SyncStatus struct {
+	PendingCount  int64      `json:"pending_count"`
+	LastSyncTime  *time.Time `json:"last_sync_time,omitempty"`
+	Health        string     `json:"health"`
+	NextRetryInMS int64      `json:"next_retry_in_ms"`
+}
+
+type ManualSyncResult struct {
+	Attempted int `json:"attempted"`
+	Sent      int `json:"sent"`
+	Failed    int `json:"failed"`
+	Skipped   int `json:"skipped"`
+}
+
 func NewService(database *db.Database) *Service {
 	return &Service{
 		queries: db.NewSyncQueueQueries(database.DB),
 	}
+}
+
+func (s *Service) GetStatus() (*SyncStatus, error) {
+	pendingCount, err := s.queries.CountPendingAndFailed()
+	if err != nil {
+		return nil, fmt.Errorf("sync status count: %w", err)
+	}
+
+	lastSyncAt, err := s.queries.LastSuccessfulSyncAt()
+	if err != nil {
+		return nil, fmt.Errorf("sync status last success: %w", err)
+	}
+
+	items, err := s.queries.ListRetryable(100)
+	if err != nil {
+		return nil, fmt.Errorf("sync status retryable list: %w", err)
+	}
+
+	now := time.Now().UTC()
+	minRetryDelay := int64(0)
+	health := "ok"
+	if pendingCount > 0 {
+		health = "backlog"
+	}
+
+	for _, item := range items {
+		delay := retryDelay(item, now)
+		if minRetryDelay == 0 || delay < minRetryDelay {
+			minRetryDelay = delay
+		}
+		if item.Status == "failed" {
+			health = "degraded"
+		}
+	}
+
+	return &SyncStatus{
+		PendingCount:  pendingCount,
+		LastSyncTime:  lastSyncAt,
+		Health:        health,
+		NextRetryInMS: minRetryDelay,
+	}, nil
+}
+
+func (s *Service) RunManualSync(ctx context.Context, limit int) (*ManualSyncResult, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+
+	items, err := s.queries.ListRetryable(limit)
+	if err != nil {
+		return nil, fmt.Errorf("list retryable queue items: %w", err)
+	}
+
+	result := &ManualSyncResult{}
+	now := time.Now().UTC()
+	for _, item := range items {
+		if err := ctx.Err(); err != nil {
+			return nil, fmt.Errorf("manual sync canceled: %w", err)
+		}
+
+		delay := retryDelay(item, now)
+		if delay > 0 {
+			result.Skipped++
+			continue
+		}
+
+		result.Attempted++
+
+		var event Event
+		if err := json.Unmarshal([]byte(item.Payload), &event); err != nil {
+			if markErr := s.queries.MarkAttempt(item.ID, "failed"); markErr != nil {
+				return nil, fmt.Errorf("mark invalid payload failed for %s: %w", item.ID, markErr)
+			}
+			result.Failed++
+			continue
+		}
+
+		if err := validateEvent(event); err != nil {
+			if markErr := s.queries.MarkAttempt(item.ID, "failed"); markErr != nil {
+				return nil, fmt.Errorf("mark invalid event failed for %s: %w", item.ID, markErr)
+			}
+			result.Failed++
+			continue
+		}
+
+		if err := s.queries.MarkAttempt(item.ID, "sent"); err != nil {
+			return nil, fmt.Errorf("mark sync item sent for %s: %w", item.ID, err)
+		}
+		result.Sent++
+	}
+
+	return result, nil
 }
 
 // Enqueue stores an event in sync_queue for periodic delivery.
@@ -80,4 +187,30 @@ func validateEvent(event Event) error {
 	}
 
 	return nil
+}
+
+func retryDelay(item db.SyncQueueItem, now time.Time) int64 {
+	if item.LastAttempt == nil {
+		return 0
+	}
+
+	backoff := backoffDuration(item.Attempts)
+	nextAttemptAt := item.LastAttempt.UTC().Add(backoff)
+	if !nextAttemptAt.After(now) {
+		return 0
+	}
+
+	return nextAttemptAt.Sub(now).Milliseconds()
+}
+
+func backoffDuration(attempts int) time.Duration {
+	if attempts <= 0 {
+		return 0
+	}
+
+	seconds := 1 << (attempts - 1)
+	if seconds > 8 {
+		seconds = 8
+	}
+	return time.Duration(seconds) * time.Second
 }

@@ -97,6 +97,36 @@ async function loadSnapshot() {
   }
 }
 
+async function refreshSyncStatus() {
+  try {
+    if (!(window.go && window.go.main && window.go.main.App)) {
+      return;
+    }
+
+    const status = await window.go.main.App.GetSyncStatus();
+    if (!status) {
+      return;
+    }
+
+    const pending = typeof status.PendingCount === "number" ? status.PendingCount : 0;
+    const health = (status.Health || "unknown").toLowerCase();
+    const nextRetryMs = typeof status.NextRetryInMS === "number" ? status.NextRetryInMS : 0;
+
+    let suffix = `pending=${pending}, health=${health}`;
+    if (nextRetryMs > 0) {
+      suffix += `, next_retry=${Math.ceil(nextRetryMs / 1000)}s`;
+    }
+
+    syncStatusText.textContent = `Sync: ${suffix}`;
+    syncStatusIndicator.classList.remove("idle", "error", "pulse");
+    if (health === "degraded") {
+      syncStatusIndicator.classList.add("error");
+    }
+  } catch (err) {
+    console.warn("Unable to load sync status:", err);
+  }
+}
+
 function renderIngestionList() {
   ingestionList.innerHTML = "";
   notebooks.forEach((item) => {
@@ -145,6 +175,7 @@ enterDashboardBtn.addEventListener("click", async () => {
   renderIngestionList();
   // Try to load real snapshot from backend
   await loadSnapshot();
+  await refreshSyncStatus();
 });
 
 simulateUploadBtn.addEventListener("click", () => {
@@ -167,6 +198,7 @@ syncNowFooterBtn.addEventListener("click", async () => {
       // Call backend RPC if available
       const result = await window.go.main.App.RunManualSync();
       syncStatusText.textContent = `Sync: Complete. ${result || "Ready."}`;
+      await refreshSyncStatus();
     } else {
       // Demo mode
       syncStatusText.textContent = "Sync: Demo mode - queued 4 events, 0 duplicates detected.";

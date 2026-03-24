@@ -9,3 +9,11 @@ export function GetDashboardSnapshot() {
 export function GetStartupStatus() {
   return window['go']['main']['App']['GetStartupStatus']();
 }
+
+export function GetSyncStatus() {
+  return window['go']['main']['App']['GetSyncStatus']();
+}
+
+export function RunManualSync() {
+  return window['go']['main']['App']['RunManualSync']();
+}

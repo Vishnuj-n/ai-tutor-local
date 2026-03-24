@@ -1,12 +1,12 @@
 :root {
-  --bg-deep: #071015;
-  --bg-mid: #0f1e26;
-  --ink: #eaf6f4;
-  --muted: #99b6b0;
-  --accent: #d9ff57;
-  --card: rgba(10, 27, 31, 0.78);
-  --border: rgba(177, 220, 211, 0.22);
-  --danger: #ff8469;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-soft: #fafafa;
+  --ink: #111111;
+  --muted: #616161;
+  --accent: #111111;
+  --border: #e6e6e6;
+  --danger: #c62828;
 }
 
 * {
@@ -16,39 +16,21 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at 10% 20%, #14343f 0%, transparent 40%),
-    radial-gradient(circle at 92% 15%, #4d6122 0%, transparent 38%),
-    linear-gradient(160deg, var(--bg-deep), var(--bg-mid));
+  background: var(--bg);
   color: var(--ink);
   font-family: "IBM Plex Sans", sans-serif;
-  position: relative;
   display: flex;
   flex-direction: column;
 }
 
-.ambient {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(120deg, rgba(217, 255, 87, 0.06), rgba(111, 241, 255, 0.05));
-  animation: pulse 10s ease-in-out infinite alternate;
-}
-
+.ambient,
 .grid-overlay {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 42px 42px;
-  mask-image: radial-gradient(circle at center, black 32%, transparent 85%);
+  display: none;
 }
 
 .app-shell {
-  width: min(1180px, 96vw);
+  width: min(1080px, 94vw);
   margin: 2rem auto;
-  position: relative;
-  z-index: 1;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -65,9 +47,9 @@ body {
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.08rem;
-  color: var(--accent);
+  color: var(--muted);
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
 }
 
 h1, h2, h3, h4 {
@@ -76,7 +58,7 @@ h1, h2, h3, h4 {
 }
 
 h1 {
-  font-size: clamp(1.6rem, 2.6vw, 2.8rem);
+  font-size: clamp(1.5rem, 2.2vw, 2.2rem);
 }
 
 .topbar-pills {
@@ -88,18 +70,18 @@ h1 {
 .pill {
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 0.45rem 0.85rem;
-  font-size: 0.82rem;
-  background: rgba(13, 32, 36, 0.75);
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  background: var(--surface-soft);
+  color: var(--muted);
 }
 
 .panel {
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 12px;
   padding: 1.2rem;
-  margin-bottom: 1.2rem;
-  background: var(--card);
-  backdrop-filter: blur(8px);
+  margin-bottom: 1rem;
+  background: var(--surface);
 }
 
 .panel-head {
@@ -122,7 +104,7 @@ label {
   flex-direction: column;
   gap: 0.4rem;
   color: var(--muted);
-  font-size: 0.92rem;
+  font-size: 0.9rem;
 }
 
 input,
@@ -135,10 +117,17 @@ input,
 select {
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.7rem 0.8rem;
-  background: rgba(9, 25, 28, 0.95);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  background: #ffffff;
   color: var(--ink);
+}
+
+input:focus,
+select:focus,
+button:focus-visible {
+  outline: 2px solid #dcdcdc;
+  outline-offset: 1px;
 }
 
 .full-width {
@@ -153,24 +142,29 @@ select {
 
 .btn {
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  padding: 0.62rem 0.95rem;
   color: var(--ink);
-  background: rgba(17, 37, 42, 0.92);
+  background: #ffffff;
   cursor: pointer;
-  transition: transform 120ms ease, border-color 120ms ease;
+  transition: background-color 120ms ease, border-color 120ms ease;
 }
 
 .btn:hover {
-  transform: translateY(-1px);
-  border-color: rgba(217, 255, 87, 0.65);
+  background: var(--surface-soft);
+  border-color: #d8d8d8;
 }
 
 .btn-primary {
-  background: linear-gradient(110deg, #d9ff57, #8dc640);
-  border-color: transparent;
-  color: #102117;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
   font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: #2a2a2a;
+  border-color: #2a2a2a;
 }
 
 .status {
@@ -179,7 +173,7 @@ select {
 }
 
 .status.ok {
-  color: var(--accent);
+  color: #2e7d32;
 }
 
 .status.err {
@@ -195,13 +189,13 @@ select {
 
 .stat-card {
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 10px;
   padding: 0.9rem;
-  background: rgba(9, 23, 28, 0.92);
+  background: var(--surface-soft);
 }
 
 .value {
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   margin: 0.3rem 0;
 }
 
@@ -213,9 +207,9 @@ select {
 
 .surface {
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 10px;
   padding: 0.9rem;
-  background: rgba(9, 23, 28, 0.9);
+  background: #ffffff;
 }
 
 .surface-head {
@@ -236,8 +230,9 @@ select {
 
 .list li {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 0.65rem;
+  background: var(--surface-soft);
 }
 
 .progress {
@@ -245,14 +240,14 @@ select {
   height: 8px;
   border-radius: 999px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.08);
+  background: #efefef;
   margin-top: 0.5rem;
 }
 
 .progress > span {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #7ce9ff, #d9ff57);
+  background: #222222;
   transition: width 320ms ease;
 }
 
@@ -273,8 +268,8 @@ select {
 }
 
 @keyframes pulse {
-  from { opacity: 0.35; }
-  to { opacity: 0.8; }
+  from { opacity: 0.45; }
+  to { opacity: 1; }
 }
 
 @media (max-width: 900px) {
@@ -316,7 +311,7 @@ select {
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 1rem;
-  background: rgba(10, 27, 31, 0.95);
+  background: #ffffff;
   border-top: 1px solid var(--border);
   color: var(--muted);
   font-size: 0.85rem;
@@ -327,7 +322,7 @@ select {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #7ce9ff;
+  background: #2e7d32;
   animation: pulse 1.5s ease-in-out infinite;
   flex-shrink: 0;
 }
@@ -337,7 +332,7 @@ select {
 }
 
 .sync-indicator.idle {
-  background: var(--muted);
+  background: #b0b0b0;
 }
 
 #sync-status-text {
@@ -350,14 +345,15 @@ select {
   font-size: 0.8rem;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: rgba(9, 25, 28, 0.95);
+  background: #ffffff;
   color: var(--muted);
   cursor: pointer;
-  transition: all 200ms ease;
+  transition: all 160ms ease;
   flex-shrink: 0;
 }
 
 .sync-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: #cfcfcf;
+  background: var(--surface-soft);
+  color: var(--ink);
 }

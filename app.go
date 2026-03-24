@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"ai-tutor-local/internal/db"
+	syncsvc "ai-tutor-local/internal/sync"
 	"ai-tutor-local/internal/ui"
 )
 
@@ -56,6 +57,38 @@ func (a *App) GetDashboardSnapshot() (*ui.DashboardSnapshot, error) {
 
 	svc := ui.NewDashboardService(a.database)
 	return svc.GetSnapshot(ctx)
+}
+
+func (a *App) GetSyncStatus() (*syncsvc.SyncStatus, error) {
+	if a.startupErr != nil {
+		return nil, fmt.Errorf("app startup failed: %w", a.startupErr)
+	}
+	if a.database == nil {
+		return nil, fmt.Errorf("database is not initialized")
+	}
+
+	svc := syncsvc.NewService(a.database)
+	return svc.GetStatus()
+}
+
+func (a *App) RunManualSync() (string, error) {
+	if a.startupErr != nil {
+		return "", fmt.Errorf("app startup failed: %w", a.startupErr)
+	}
+	if a.database == nil {
+		return "", fmt.Errorf("database is not initialized")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	svc := syncsvc.NewService(a.database)
+	result, err := svc.RunManualSync(ctx, 100)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("attempted=%d sent=%d failed=%d skipped=%d", result.Attempted, result.Sent, result.Failed, result.Skipped), nil
 }
 
 func (a *App) initDatabase() error {

@@ -12,8 +12,8 @@ Project: Local-First AI Tutoring System (Track A + Track B)
 | Sprint 1 | Track A foundation scaffold | Completed | 2026-03-08 to 2026-03-14 | Go module, schema.sql, DB init, models, queries, module skeletons |
 | Sprint 2 | Ingestion to retrieval pipeline baseline | Completed | 2026-03-15 to 2026-03-21 | End-to-end ingestion + FTS retrieval baseline validated; vec path optional with strict mode/fallback |
 | Sprint 3 | FSRS + review workflows + telemetry quality | Completed | 2026-03-22 to 2026-03-28 | FSRS rating workflow, due-card scheduler, session telemetry quality guards implemented |
-| **Sprint 4** | **Desktop UI + Wails runtime + Dashboard wiring** | **In Progress** | **2026-03-29 to 2026-04-04** | **Wails dev running, live dashboard, real backend data binding, basic review flow** |
-| Sprint 5 | Classroom sync stabilization + cloud aggregation validation | Planned | 2026-04-05 to 2026-04-11 | Cloud API integration, telemetry sync protocol, offline queue handling |
+| Sprint 4 | Desktop UI + Wails runtime + Dashboard wiring | Completed | 2026-03-29 to 2026-04-04 | Wails dev running, live dashboard, real backend data binding, basic review flow |
+| **Sprint 5** | **Classroom sync stabilization + cloud aggregation validation** | **In Progress** | **2026-04-05 to 2026-04-11** | **Cloud API integration, telemetry sync protocol, offline queue handling** |
 | Sprint 6 | Release hardening + E2E testing | Planned | 2026-04-12 to 2026-04-18 | Performance tuning, security audit, end-to-end regression suite |
 | Phase 2 | MCQ quizzes + .docx/.md support + classroom join | Future | Future | Cloud sync MVP, teacher dashboard, student retention |
 | Phase 3 | Talk-to-Duck + gamification + advanced features | Future | Future | Voice interface, leaderboards, knowledge graph |
@@ -317,6 +317,23 @@ Status: Completed on 2026-03-21.
 
 **Timeline**: 2026-04-05 to 2026-04-11  
 **Goal**: Stabilize classroom sync flow, validate cloud API contract, prepare for Phase 2 cloud connection.
+
+### Sprint 5 Kickoff (2026-03-24)
+
+- Added sync queue retry-aware processing in `internal/sync/service.go`:
+  - manual sync now processes retryable queue rows (`pending` + `failed`)
+  - exponential backoff window enforced per row (`1s -> 2s -> 4s -> 8s` cap)
+  - payload validation failures are marked `failed` and counted
+- Added sync status contract for desktop UI:
+  - `GetSyncStatus()` returns `pending_count`, `last_sync_time`, `health`, and next retry window
+  - health states currently surfaced: `ok`, `backlog`, `degraded`
+- Added Wails RPC bindings in `app.go`:
+  - `GetSyncStatus()`
+  - `RunManualSync()`
+- Wired frontend footer indicator (`frontend/app.js`) to call `GetSyncStatus()` on dashboard open and after manual sync.
+- Added tests for Sprint 5 kickoff behavior (`internal/sync/service_test.go`):
+  - manual sync sends ready rows and skips rows still under backoff
+  - sync status reports degraded health with non-zero next retry delay when failed rows exist
 
 ### Sprint 5 Scope
 
