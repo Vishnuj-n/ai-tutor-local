@@ -37,3 +37,7 @@ export function RateDueCard(arg1) {
 export function RunManualSync() {
   return window['go']['main']['App']['RunManualSync']();
 }
+
+export function StreamRAGAnswer(arg1) {
+  return window['go']['main']['App']['StreamRAGAnswer'](arg1);
+}

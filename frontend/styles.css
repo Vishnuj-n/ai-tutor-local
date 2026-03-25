@@ -206,6 +206,17 @@ button:focus-visible {
   color: var(--muted);
 }
 
+.privacy-note {
+  margin: 0.15rem 0 0;
+  padding: 0.6rem 0.7rem;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: #f7fbff;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
 .status.ok {
   color: #2e7d32;
 }

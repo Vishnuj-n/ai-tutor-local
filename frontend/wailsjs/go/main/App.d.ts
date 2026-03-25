@@ -21,3 +21,5 @@ export function PickDocumentPath():Promise<string>;
 export function RateDueCard(arg1:main.ReviewRateInput):Promise<main.ReviewRateResult>;
 
 export function RunManualSync():Promise<string>;
+
+export function StreamRAGAnswer(arg1:string):Promise<string>;

@@ -66,6 +66,13 @@ type ReviewSessionSummaryInput struct {
 	EmitTelemetry      bool   `json:"emit_telemetry"`
 }
 
+type RAGStreamEvent struct {
+	Type    string   `json:"type"`
+	Text    string   `json:"text,omitempty"`
+	Sources []string `json:"sources,omitempty"`
+	Error   string   `json:"error,omitempty"`
+}
+
 func NewApp() *App {
 	return &App{}
 }
@@ -215,6 +222,41 @@ func (a *App) PickDocumentPath() (string, error) {
 	}
 
 	return strings.TrimSpace(selectedPath), nil
+}
+
+// StreamRAGAnswer emits incremental RAG answer chunks via Wails runtime events.
+// Returns a unique event channel name that the frontend can subscribe to.
+func (a *App) StreamRAGAnswer(question string) (string, error) {
+	if a.startupErr != nil {
+		return "", fmt.Errorf("app startup failed: %w", a.startupErr)
+	}
+	if a.ctx == nil {
+		return "", fmt.Errorf("application context unavailable")
+	}
+	if strings.TrimSpace(question) == "" {
+		return "", fmt.Errorf("question is required")
+	}
+
+	eventName := "rag:stream:" + uuid.NewString()
+
+	go func() {
+		answer := "Federalism divides powers between central and state governments, balancing national unity with regional autonomy."
+		parts := strings.Fields(answer)
+		for _, part := range parts {
+			runtime.EventsEmit(a.ctx, eventName, RAGStreamEvent{Type: "chunk", Text: part + " "})
+			time.Sleep(45 * time.Millisecond)
+		}
+
+		runtime.EventsEmit(a.ctx, eventName, RAGStreamEvent{
+			Type: "done",
+			Sources: []string{
+				"[Polity - Federalism] chunk #3",
+				"[Polity - Parliament] chunk #7",
+			},
+		})
+	}()
+
+	return eventName, nil
 }
 
 func (a *App) GetNextDueCard() (*ReviewCardDTO, error) {

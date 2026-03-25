@@ -1,3 +1,5 @@
+import { EventsOff, EventsOn } from "./wailsjs/runtime/runtime.js";
+
 const onboardingPanel = document.getElementById("onboarding-panel");
 const dashboardPanel = document.getElementById("dashboard-panel");
 const onboardingForm = document.getElementById("onboarding-form");
@@ -36,6 +38,7 @@ let activeReviewCard = null;
 let reviewShownAtMs = 0;
 let onboardingMode = "initial";
 let reviewSession = null;
+let activeRagEvent = "";
 
 const notebooks = [
   { name: "Polity", file: "Constitution_Notes.pdf", progress: 100, state: "ready" },
@@ -516,19 +519,73 @@ showAnswerBtn.addEventListener("click", () => {
 });
 
 runRagBtn.addEventListener("click", () => {
-  const question = ragQuestion.value.trim();
-  if (!question) {
-    ragStatus.textContent = "Enter a question first.";
-    return;
-  }
+  void (async () => {
+    const question = ragQuestion.value.trim();
+    if (!question) {
+      ragStatus.textContent = "Enter a question first.";
+      return;
+    }
 
-  ragStatus.textContent = "Running HyDE + hybrid retrieval...";
-  setTimeout(() => {
-    ragStatus.textContent = "Grounded answer ready.";
-    ragAnswerText.textContent = "Federalism divides powers between central and state governments, balancing national unity with regional autonomy.";
-    ragSources.textContent = "Sources: [Polity - Federalism] chunk #3, [Polity - Parliament] chunk #7";
     ragAnswerBox.classList.remove("hidden");
-  }, 650);
+    ragAnswerText.textContent = "";
+    ragSources.textContent = "";
+    ragStatus.textContent = "Running HyDE + hybrid retrieval...";
+
+    if (activeRagEvent) {
+      EventsOff(activeRagEvent);
+      activeRagEvent = "";
+    }
+
+    try {
+      if (window.go && window.go.main && window.go.main.App && window.go.main.App.StreamRAGAnswer) {
+        const eventName = await window.go.main.App.StreamRAGAnswer(question);
+        activeRagEvent = eventName;
+
+        EventsOn(eventName, (payload) => {
+          if (!payload || typeof payload !== "object") {
+            return;
+          }
+
+          if (payload.Type === "chunk") {
+            ragAnswerText.textContent += payload.Text || "";
+            ragStatus.textContent = "Streaming answer...";
+            return;
+          }
+
+          if (payload.Type === "done") {
+            ragStatus.textContent = "Grounded answer ready.";
+            if (Array.isArray(payload.Sources) && payload.Sources.length > 0) {
+              ragSources.textContent = `Sources: ${payload.Sources.join(", ")}`;
+            }
+            EventsOff(eventName);
+            if (activeRagEvent === eventName) {
+              activeRagEvent = "";
+            }
+            return;
+          }
+
+          if (payload.Type === "error") {
+            ragStatus.textContent = `RAG error: ${payload.Error || "unknown error"}`;
+            EventsOff(eventName);
+            if (activeRagEvent === eventName) {
+              activeRagEvent = "";
+            }
+          }
+        });
+
+        return;
+      }
+    } catch (err) {
+      console.warn("Streaming RAG unavailable, falling back to demo response:", err);
+    }
+
+    // Demo fallback (non-Wails or missing backend method).
+    setTimeout(() => {
+      ragStatus.textContent = "Grounded answer ready.";
+      ragAnswerText.textContent = "Federalism divides powers between central and state governments, balancing national unity with regional autonomy.";
+      ragSources.textContent = "Sources: [Polity - Federalism] chunk #3, [Polity - Parliament] chunk #7";
+    }, 650);
+  })();
 });
 
 document.addEventListener("DOMContentLoaded", async () => {
