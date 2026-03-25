@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // NotebookQueries provides CRUD operations for notebooks.
@@ -194,7 +195,8 @@ func NewSyncQueueQueries(database *gorm.DB) *SyncQueueQueries {
 }
 
 func (q *SyncQueueQueries) Enqueue(item *SyncQueueItem) error {
-	return q.db.Create(item).Error
+	// Idempotent insert by event ID: duplicate IDs are ignored without surfacing an error.
+	return q.db.Clauses(clause.OnConflict{DoNothing: true}).Create(item).Error
 }
 
 func (q *SyncQueueQueries) ListPending(limit int) ([]SyncQueueItem, error) {
@@ -287,11 +289,8 @@ func (q *SyncQueueQueries) LastSuccessfulSyncAt() (*time.Time, error) {
 		Where("last_attempt IS NOT NULL").
 		Order("last_attempt DESC").
 		Limit(1).
-		Take(&row).Error
+		Scan(&row).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 

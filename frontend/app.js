@@ -90,6 +90,7 @@ function showDashboard() {
   ragPanel.classList.add("hidden");
   dashboardPanel.classList.remove("hidden");
 
+  enterDashboardBtn.classList.remove("hidden");
   backFromSettingsBtn.classList.add("hidden");
   openSettingsBtn.classList.remove("hidden");
 }
@@ -103,9 +104,11 @@ function showOnboarding(mode) {
 
   if (onboardingMode === "settings" && isSetupComplete()) {
     openSettingsBtn.classList.remove("hidden");
+    enterDashboardBtn.classList.add("hidden");
     backFromSettingsBtn.classList.remove("hidden");
   } else {
     openSettingsBtn.classList.add("hidden");
+    enterDashboardBtn.classList.remove("hidden");
     backFromSettingsBtn.classList.add("hidden");
   }
 }

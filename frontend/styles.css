@@ -62,14 +62,6 @@ body {
   margin-bottom: 1.5rem;
 }
 
-.eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.08rem;
-  color: #2b61bd;
-  margin: 0;
-  font-size: 0.76rem;
-}
-
 h1, h2, h3, h4 {
   font-family: "Space Grotesk", sans-serif;
   margin: 0;
@@ -95,10 +87,26 @@ h1 {
 }
 
 .topbar-settings {
-  padding: 0.35rem 0.8rem;
+  width: 40px;
+  height: 40px;
+  padding: 0;
   border-radius: 999px;
   border-color: #c6dcff;
   background: linear-gradient(135deg, #eef4ff, #e8fff9);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-icon {
+  width: 18px;
+  height: 18px;
+  fill: var(--muted);
+  transition: fill 120ms ease;
+}
+
+.topbar-settings:hover .settings-icon {
+  fill: var(--ink);
 }
 
 .panel {

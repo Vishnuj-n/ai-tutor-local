@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Tutor Local - Sprint 4 Frontend Scaffold</title>
+  <title>AI Tutor Local</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -16,13 +16,16 @@
   <main class="app-shell">
     <header class="topbar">
       <div>
-        <p class="eyebrow">Sprint 4 Frontend Kickoff</p>
         <h1>Local First Tutor Console</h1>
       </div>
       <div class="topbar-pills">
         <span class="pill">ONNX embeddings</span>
         <span class="pill">API generation</span>
-        <button class="btn topbar-settings hidden" id="open-settings" type="button">Settings</button>
+        <button class="btn topbar-settings hidden" id="open-settings" type="button" aria-label="Open settings" title="Settings">
+          <svg class="settings-icon" viewBox="0 0 24 24" role="img" aria-hidden="true" focusable="false">
+            <path d="M19.14 12.94c.04-.31.06-.62.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.14 7.14 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.57.22-1.11.54-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.7 8.48a.5.5 0 0 0 .12.64L4.85 10.7c-.04.31-.06.62-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.4.31.63.22l2.39-.96c.5.4 1.05.72 1.63.94l.36 2.54c.04.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54c.58-.22 1.13-.54 1.63-.94l2.39.96c.23.09.5 0 .63-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.4a3.4 3.4 0 1 1 0-6.8 3.4 3.4 0 0 1 0 6.8z"></path>
+          </svg>
+        </button>
       </div>
     </header>
 
