@@ -65,6 +65,7 @@ Both tracks can proceed in parallel once `DATA_API.md` and `SCHEMA.md` are final
 - React teacher dashboard: class overview, student drilldown, weak topic highlights
 - Classroom and student roster management endpoints
 - Class code generation and student registration flow
+- Required (Phase 2): read-only teacher content pack publish + student import-copy workflow (no live collaboration)
 
 ### Track B Handoff Package (Friend)
 
