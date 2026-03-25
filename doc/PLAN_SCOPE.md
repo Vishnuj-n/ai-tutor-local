@@ -1,6 +1,6 @@
 # PLAN_SCOPE.md
 ## Project Scope, Phases & Task Boundaries
-> Version 1.0 | March 2025
+> Version 2.0 | March 2026
 
 ---
 
@@ -8,7 +8,7 @@
 
 | Track | Owner | Deliverable | Tech Stack |
 |---|---|---|---|
-| Track A — Local App | Vishnu | Go/Wails desktop app with RAG, FSRS, and sync | Go, Wails, SQLite, sqlite-vec, ONNX Runtime, Ollama (planned later) |
+| Track A — Local App | Vishnu | Go/Wails desktop app with Guided Task Board, RAG, FSRS, and sync | Go, Wails, SQLite, sqlite-vec, ONNX Runtime, Azure OpenAI (via provider abstraction) |
 | Track B — Cloud | Friend | REST API + React teacher dashboard | Node.js, PostgreSQL, React, Tailwind |
 
 Both tracks can proceed in parallel once `DATA_API.md` and `SCHEMA.md` are finalized. The API contract is the only hard dependency between the two tracks.
@@ -17,25 +17,26 @@ Both tracks can proceed in parallel once `DATA_API.md` and `SCHEMA.md` are final
 
 ## 2. Phase 1 — MVP (Local App, Track A)
 
-**Goal:** A fully functional standalone desktop app a student can use daily with zero internet.
+**Goal:** A fully functional local-first desktop app that runs daily study loops with clear guidance and grounded Q&A.
 
 ### In Scope
 
 - PDF upload, text extraction, semantic chunking, embedding (local ONNX model: `onnx/model_int8.onnx`)
 - SQLite + `sqlite-vec` for vector storage + FTS5 for keyword search
-- Hybrid retrieval (vector + BM25) with HyDE query expansion
-- LLM orchestration: OpenAI-compatible API mode now (OpenAI/Groq/Gemini/OpenRouter), local Ollama mode deferred
+- Hybrid retrieval (vector + BM25/FTS5) with Reciprocal Rank Fusion (RRF)
+- LLM orchestration via provider abstraction, with Azure OpenAI as default production provider
 - Automatic flashcard generation from document chunks (no manual creation)
 - FSRS scheduling: stability, difficulty, retrievability tracking per card
-- Basic Wails UI: Notebook view, document reader, flashcard review, Q&A interface
+- Guided Task Board in local UI (daily ordered tasks: read -> review -> quiz)
+- Basic Wails UI: Notebook view, document reader, flashcard review, quiz, and Q&A interface
 - Analytics event logging in SQLite `sync_queue` (data is stored even if sync not yet active)
 - Student config storage: name, USN, LLM mode preference
 
 ### Out of Scope (Phase 1)
 
-- Cloud sync (no data leaves the machine yet) → Phase 2
+- Cloud sync transport and teacher dashboard visibility -> Phase 2
 - Classroom join via code → Phase 2
-- MCQ quiz generation (flashcards only in Phase 1) → Phase 2
+- Advanced adaptive tutoring loops beyond fixed daily tasks -> Phase 3
 - Talk-to-Duck (self-explanation module) → Phase 2
 - `.docx` and `.md` file parsers → Phase 2
 - Knowledge Graph → Phase 3 / Future
@@ -50,8 +51,10 @@ Both tracks can proceed in parallel once `DATA_API.md` and `SCHEMA.md` are final
 ### Track A Additions
 
 - Classroom join via 6-character class code
+- Classroom Sync settings (dashboard URL, connectivity probe, sync health)
 - Telemetry sync module: batch `POST /api/v1/sync` every 15 min + event-triggered
 - Offline queue handling (`sync_queue` in SQLite with retry logic)
+- Guided Task Board backed by local planning state (`topics`, `daily_tasks`)
 - MCQ quiz generation + quiz UI flow
 - `.docx` and `.md` file support
 
@@ -60,7 +63,18 @@ Both tracks can proceed in parallel once `DATA_API.md` and `SCHEMA.md` are final
 - Cloud REST API: all endpoints defined in `DATA_API.md`
 - PostgreSQL database with full analytics schema from `SCHEMA.md`
 - React teacher dashboard: class overview, student drilldown, weak topic highlights
+- Classroom and student roster management endpoints
 - Class code generation and student registration flow
+
+### Track B Handoff Package (Friend)
+
+Before implementation starts, hand over:
+
+1. `doc/AI_TUTOR_CLOUD_HANDOFF.md` (execution checklist)
+2. `doc/DATA_API.md` (binding API contract)
+3. `doc/SCHEMA.md` (cloud table contract)
+4. `doc/APP_FLOW.md` (runtime flow + planned flow)
+5. `doc/sprint.md` (timeline + status)
 
 ---
 
@@ -76,6 +90,15 @@ Both tracks can proceed in parallel once `DATA_API.md` and `SCHEMA.md` are final
 
 ---
 
+## 4.5 Phase 2.5 - Quality Hardening
+
+- Structured output validation and retry for generation JSON (quiz/flashcard/task payloads)
+- Token budget guardrails for retrieval context packing
+- Queue and sync observability (clear pending/failed state and diagnostics)
+- End-to-end smoke tests for join, sync, guided task progression
+
+---
+
 ## 5. Explicit Design Decisions
 
 | Decision | Choice | Reason |
@@ -87,10 +110,12 @@ Both tracks can proceed in parallel once `DATA_API.md` and `SCHEMA.md` are final
 | Vector storage | `sqlite-vec` | No extra dependency; same SQLite file |
 | Keyword search | SQLite FTS5 (BM25) | Built-in, zero-config |
 | Reranker | Optional cross-encoder (local) | Phase 1 may skip; Phase 2 adds it |
+| Retrieval fusion | RRF (vector + BM25) | Stable relevance without tight score calibration |
 | Sync type | Periodic (15 min) + event-based | Balance freshness vs. battery/bandwidth |
 | Student auth (cloud) | UUID + class code | No account creation required for students |
 | Phase 1 formats | PDF only | Scope control |
 | Manual flashcard editing | Allowed locally | Schema tracks `source` flag: `ai` vs `user` |
+| Generation default | Azure OpenAI | Managed quality + predictable latency |
 | Python | No | Deployment nightmare for a native desktop app |
 
 ---
@@ -102,13 +127,14 @@ Both tracks can proceed in parallel once `DATA_API.md` and `SCHEMA.md` are final
 1. A student can upload a PDF and have flashcards auto-generated within 5 minutes.
 2. The FSRS scheduler correctly surfaces due cards daily.
 3. A student can ask a natural-language question and receive a grounded answer with source references.
-4. The app works 100% offline.
+4. The app works offline for ingestion, retrieval, review, and task progression.
 
 ### Phase 2 is complete when:
 
 1. A student can join a class via code and have their activity visible on the teacher dashboard within 30 minutes.
 2. A teacher can see class-wide accuracy per topic.
 3. Offline sync correctly queues and delivers data on reconnection.
+4. Guided Task Board state is visible locally and remains consistent across app restarts.
 
 ---
 

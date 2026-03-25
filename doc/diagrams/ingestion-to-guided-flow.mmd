@@ -1,0 +1,31 @@
+sequenceDiagram
+  autonumber
+  participant U as Student
+  participant FE as Frontend
+  participant APP as app.go
+  participant ING as ingestion.Service
+  participant DB as SQLite
+  participant TE as taskengine.Service
+  participant SY as sync.Service
+
+  U->>FE: Select file
+  FE->>APP: IngestDocument(filePath, notebookName)
+  APP->>ING: RegisterDocument()
+  ING->>DB: Insert documents(status=pending)
+  APP->>ING: ProcessRegisteredDocument(documentID)
+  ING->>DB: Update status=processing
+  ING->>ING: Extract text and chunk by heading
+  ING->>DB: Insert chunks and mark document ready
+
+  Note over TE: Planned wiring in next sprint
+  APP-->>TE: BuildLearningPath(notebookID, documentID)
+  TE->>DB: Upsert topics + create daily_tasks
+
+  FE->>APP: CompleteReviewSession(...)
+  APP->>SY: Enqueue(flashcard_session event)
+  SY->>DB: Insert sync_queue(status=pending)
+
+  FE->>APP: RunManualSync()
+  APP->>SY: RunManualSync(limit)
+  SY->>DB: Local status transitions only
+  Note over SY: HTTP POST /sync is planned next

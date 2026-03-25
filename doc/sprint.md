@@ -1,7 +1,7 @@
 # Sprint Plan and Progress Tracker
 
-Version: 1.0  
-Date: 2026-03-21  
+Version: 1.1  
+Date: 2026-03-25  
 Project: Local-First AI Tutoring System (Track A + Track B)
 
 ## Sprint Overview
@@ -43,7 +43,7 @@ Project: Local-First AI Tutoring System (Track A + Track B)
 - Added sync event model + queue service.
 - Added generation client interface.
 
-## Current Sprint (Sprint 2): Completed
+## Historical Snapshot (Sprint 2): Completed
 
 ### Sprint Goal
 
@@ -84,7 +84,6 @@ What you install:
 - ai-tutor-local/onnx/model_int8.onnx
 
 Implementation note for Sprint 2:
-- Keep this ONNX path as the local embedding fallback path while resolving sqlite-vec extension compatibility.
 - Add a startup check that validates the model file exists before enabling ONNX-based embedding execution.
 
 ## Mini Test Cases for Sprint 2

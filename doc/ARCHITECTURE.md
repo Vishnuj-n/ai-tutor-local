@@ -1,6 +1,6 @@
 # ARCHITECTURE.md
 ## System Architecture & Technical Design
-> Version 1.0 | March 2025
+> Version 1.1 | March 2026
 
 ---
 
@@ -11,7 +11,7 @@ Student Machine                          Cloud
 ─────────────────────────────            ─────────────────────────
   Wails UI (WebView frontend)
          │
-  Go Backend (orchestrator)
+  Go Backend (Task Engine + RAG)
          │
   ┌──────┴──────────────┐
   │  SQLite             │             Node.js REST API
@@ -19,8 +19,8 @@ Student Machine                          Cloud
   │  + FTS5             │             PostgreSQL
   └──────┬──────────────┘                  │
          │                            React Dashboard
-    OpenAI-compatible API LLM
-    (OpenAI, Groq, Gemini, OpenRouter)
+    Cloud LLM API (Azure OpenAI-first)
+    + OpenAI-compatible fallback providers
 ```
 
 The project lives in two independent repositories that communicate through the versioned REST API defined in `DATA_API.md`. Both tracks can be developed in parallel once the API contract is locked.
@@ -45,7 +45,8 @@ The project lives in two independent repositories that communicate through the v
 | `ingestion` | PDF parsing (pdfcpu), chapter detection, semantic chunking, overlap |
 | `embedding` | Runs local ONNX embedding model (`onnx/model_int8.onnx`); stores float32 vectors in sqlite-vec |
 | `retrieval` | Hybrid search (sqlite-vec ANN + FTS5 BM25), HyDE query expansion, optional reranker |
-| `generation` | LLM orchestration via OpenAI-compatible client (OpenAI/Groq/Gemini/OpenRouter); flashcard + quiz gen |
+| `generation` | `LLMProvider` abstraction (Azure OpenAI-first) for answer/quiz/stream generation |
+| `taskengine` | Builds daily guided task board from ingested content (READ → REVIEW → QUIZ sequencing) |
 | `fsrs` | Pure Go FSRS-4.5 algorithm; manages stability, difficulty, retrievability per card |
 | `scheduler` | Timetable logic — accepts exam config, outputs weighted day-by-day schedule |
 | `sync` | Analytics event extraction; manages `sync_queue`; periodic + event-triggered cloud POST |
@@ -55,7 +56,7 @@ The project lives in two independent repositories that communicate through the v
 
 Go routines keep the UI responsive at all times:
 
-- **Ingestion goroutine** — PDF parsing, chunking, embedding run fully async
+- **Ingestion worker pool** — cloud-generation enrichment uses bounded concurrency (10-20 workers) for network-bound calls
 - **Sync goroutine** — ticker-based (15 min), independent of UI
 - **Generation goroutine** — LLM calls are non-blocking; results streamed back via channels
 
@@ -63,10 +64,40 @@ Go routines keep the UI responsive at all times:
 
 | Mode | Inference Target | Internet | Trigger |
 |---|---|---|---|
-| API Mode | OpenAI-compatible endpoint (`base_url`) | Yes | User selects provider and enters API key |
+| API Mode (Primary) | Azure OpenAI deployments (OpenAI-compatible fallback supported) | Yes | User selects provider and enters API key |
 | Local Mode (Planned) | Ollama (`localhost:11434`) | No | Deferred to a later sprint; currently disabled by default |
 
-Current implementation routes LLM calls through an OpenAI-compatible client contract in Go. Local Ollama mode remains on the roadmap and will be added as a provider path in a later sprint.
+Current implementation is moving to a provider interface (`LLMProvider`) so generation methods (answer/quiz/stream) are backend-agnostic. Local Ollama mode remains on the roadmap.
+
+### 3.3.1 Agentic Router + Tool Registry
+
+Queries are first routed by a cheaper model (for example GPT-4o-mini on Azure) to select a tool path:
+
+- `VectorSearch`
+- `GenerateQuiz`
+- `QueryAnalytics`
+- `GenerateGroundedAnswer`
+
+This keeps cost low while preserving quality for complex requests.
+
+### 3.3.2 Guided Task Board Model
+
+After ingestion completes, the Task Engine creates a sequenced daily plan:
+
+1. `READ` task (topic/chunk context)
+2. `REVIEW_FLASHCARDS` task (starter/generated deck)
+3. `TAKE_QUIZ` task (topic-scoped quiz)
+
+The frontend dashboard consumes this task list instead of static utility buttons.
+
+Current status: task engine service and tables exist locally, but full dashboard replacement of utility buttons is still in-progress.
+
+### 3.3.3 Structured Output Validation
+
+All generation outputs (quizzes, summaries, task plans) pass strict JSON unmarshal + schema validation in Go.
+
+- Invalid output triggers automatic retry with corrective prompt.
+- Malformed output is never silently accepted into planning tables.
 
 ### 3.3.1 CRITICAL: Embedding Model Strategy (Decoupled from Generation)
 
@@ -115,7 +146,11 @@ EmbeddingService → ONNX embed (`onnx/model_int8.onnx`) → float32[] stored in
     │
 FTS5 virtual table indexed with chunk plain text
     │
-GenerationService → auto flashcard + quiz gen per chapter
+Topic extraction + objective mapping → `topics`
+    │
+TaskEngine sequencing → `daily_tasks`
+    │
+GenerationService → flashcard + quiz generation per topic/task
 ```
 
 ### 3.5 Data Flow — RAG Query
@@ -123,7 +158,9 @@ GenerationService → auto flashcard + quiz gen per chapter
 ```
 User question
     │
-HyDE: LLM generates hypothetical 2-sentence answer
+Router model chooses tool path
+    │
+HyDE: LLM generates hypothetical 2-sentence answer (retrieval path)
     │
 Embed hypothetical answer → sqlite-vec ANN (top 20)
     │                    ╲
@@ -135,9 +172,18 @@ Optional: cross-encoder reranker → top 5
     │
 Assemble context (chunks + doc summaries)
     │
-LLM generates grounded answer
+LLM generates grounded answer (Azure OpenAI)
     │
-Answer + source links shown to user
+Answer streamed token-by-token + source links shown to user
+
+---
+
+## 3.6 Local Planning and Telemetry Tables
+
+- `topics`: extracted structured syllabus/topic units linked to notebooks
+- `daily_tasks`: sequenced guided tasks (`READ`, `REVIEW_FLASHCARDS`, `TAKE_QUIZ`) with status and due dates
+- `educational_telemetry`: educational progress telemetry for teacher analytics
+- `ai_diagnostic_telemetry`: AI diagnostics telemetry (latency, token usage, retries, provider errors)
 ```
 
 ---

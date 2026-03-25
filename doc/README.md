@@ -4,6 +4,8 @@
 
 **One-line pitch:** Transform passive reading into active, AI-driven learning — entirely on your laptop, with optional teacher oversight via a cloud analytics dashboard.
 
+> Doc status: Updated for Sprint 5 handoff (March 2026)
+
 ---
 
 ## Repositories
@@ -57,8 +59,17 @@
 | `ARCHITECTURE.md` | Technical design, module map, data flows |
 | `DATA_API.md` | API contract between local app and cloud — **binding for both devs** |
 | `PLAN_SCOPE.md` | Phase plan, team boundaries, in/out of scope decisions |
+| `AI_TUTOR_CLOUD_HANDOFF.md` | Step-by-step cloud implementation checklist for Track B owner |
 | `README.md` | This file |
 | `SCHEMA.md` | SQLite (local) and PostgreSQL (cloud) table schemas |
+
+### Cloud Handoff Read Order
+
+1. `AI_TUTOR_CLOUD_HANDOFF.md`
+2. `DATA_API.md`
+3. `SCHEMA.md`
+4. `APP_FLOW.md`
+5. `sprint.md`
 
 ---
 

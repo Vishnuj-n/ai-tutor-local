@@ -1,6 +1,6 @@
 # AI Tutor Cloud Handoff (Track B)
 
-Version: 1.0  
+Version: 1.1  
 Date: 2026-03-25  
 Owner: Friend (Cloud)
 
@@ -12,6 +12,8 @@ This document is implementation-first and should be used together with:
 - `doc/DATA_API.md` (API contract)
 - `doc/SCHEMA.md` (PostgreSQL schema definitions)
 - `doc/PLAN_SCOPE.md` (scope boundaries)
+- `doc/APP_FLOW.md` (current runtime flow vs roadmap)
+- `doc/sprint.md` (active sprint priorities)
 
 ## 2. What Local App Already Does
 
@@ -20,6 +22,8 @@ From `ai-tutor-local` current behavior:
 - Telemetry events are enqueued into local `sync_queue`.
 - Manual sync performs local validation and status transitions.
 - Cloud HTTP delivery is not fully wired yet.
+- Classroom Sync settings UI now saves base URL and class code locally.
+- Cloud health probe (`GET {base_url}/health`) is wired for connectivity testing.
 
 Implication: you can build and test cloud endpoints now with mocked requests first, then integrate when local HTTP sync is enabled.
 

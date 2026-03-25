@@ -1,6 +1,6 @@
 # DATA_API.md
 ## API Contract & Sync Payload Specification
-> Version 1.0 | March 2025
+> Version 2.0 | March 2026
 
 **This document is the binding contract between System A (local Go app) and System B (cloud dashboard). Both developers must implement exactly to this specification.**
 
@@ -16,11 +16,22 @@ Student endpoints:  X-Student-Token: <student_id UUID>
 Teacher endpoints:  Authorization: Bearer <JWT>
 ```
 
+**Deployment Note:** In production, the local app should read this Base URL from Classroom Sync settings (student-provided dashboard URL), not from hardcoded constants.
+
+### `GET /health` (Cloud Connectivity Probe)
+
+Used by local app settings to verify cloud reachability before join/sync.
+
+**Response 200:**
+```json
+{ "ok": true, "service": "ai-tutor-cloud", "version": "v1" }
+```
+
 ---
 
 ## 2. Student Endpoints (Called by Local App)
 
-### `POST /api/v1/classes/join`
+### `POST /classes/join`
 
 Student joins a classroom by entering a teacher-generated code.
 
@@ -50,7 +61,7 @@ Student joins a classroom by entering a teacher-generated code.
 
 ---
 
-### `POST /api/v1/sync` ⭐ Primary Endpoint
+### `POST /sync` ⭐ Primary Endpoint
 
 Sends batched analytics events from the local app to the cloud. This is the most critical endpoint in the entire API.
 
@@ -104,7 +115,7 @@ Sends batched analytics events from the local app to the cloud. This is the most
 
 ---
 
-### `POST /api/v1/sync/notebook-deleted`
+### `POST /sync/notebook-deleted`
 
 Informs the cloud that a student deleted a notebook locally. Historical data is retained on the cloud.
 
@@ -127,7 +138,7 @@ Informs the cloud that a student deleted a notebook locally. Historical data is 
 
 ## 3. Teacher Endpoints (Called by Dashboard)
 
-### `POST /api/v1/teacher/classes`
+### `POST /teacher/classes`
 
 Create a new class.
 
@@ -141,7 +152,7 @@ Create a new class.
 
 ---
 
-### `GET /api/v1/teacher/classes/:class_id/overview`
+### `GET /teacher/classes/:class_id/overview`
 
 Aggregated class analytics for the dashboard overview.
 
@@ -159,7 +170,7 @@ Aggregated class analytics for the dashboard overview.
 
 ---
 
-### `GET /api/v1/teacher/students/:student_id`
+### `GET /teacher/students/:student_id`
 
 Individual student performance drilldown.
 
@@ -196,6 +207,10 @@ Individual student performance drilldown.
 | Full flashcard Q&A content | ❌ NEVER | Private study material |
 | Personal notes / annotations | ❌ NEVER | Private study material |
 
+Additional policy constraints:
+- Quiz questions/options/explanations should not be synced in telemetry payloads.
+- RAG prompts, retrieved chunks, and model outputs are local-only debug artifacts unless an explicit diagnostics API is introduced.
+
 ---
 
 ## 5. Event Types
@@ -206,6 +221,101 @@ Individual student performance drilldown.
 | `flashcard_session` | Student finishes a flashcard review session | `flashcards_completed`, `accuracy_pct`, `time_spent_seconds` |
 | `study_session` | General reading / search session ends | `time_spent_seconds`, `activity_type` |
 | `notebook_deleted` | Student deletes a notebook locally | Sent via separate endpoint |
+
+Compatibility rule during migration:
+- Cloud should accept both `flashcard_session` and `flashcard_session_completed`.
+- Normalize to a single canonical value in cloud analytics processing.
+
+---
+
+## 5.1 Guided Task Endpoints (Phase 2 Contract)
+
+These endpoints support teacher-assigned or cloud-recommended daily tasks that the local app executes.
+
+### `GET /students/:student_id/tasks/today`
+
+Returns ordered tasks for the student's current day.
+
+```json
+{
+  "student_id": "uuid-v4-string",
+  "date": "2026-03-10",
+  "tasks": [
+    {
+      "task_id": "task-uuid-1",
+      "task_type": "READ",
+      "notebook_id": "notebook-uuid",
+      "topic_name": "Parliament",
+      "position": 1,
+      "status": "pending"
+    },
+    {
+      "task_id": "task-uuid-2",
+      "task_type": "REVIEW_FLASHCARDS",
+      "notebook_id": "notebook-uuid",
+      "topic_name": "Parliament",
+      "position": 2,
+      "status": "pending"
+    }
+  ]
+}
+```
+
+### `POST /students/:student_id/tasks/:task_id/progress`
+
+Upserts local task completion/progress snapshots to cloud analytics.
+
+```json
+{
+  "status": "completed",
+  "progress_pct": 100,
+  "occurred_at": "2026-03-10T09:45:00Z",
+  "metadata": {
+    "notebook_id": "notebook-uuid",
+    "topic_name": "Parliament"
+  }
+}
+```
+
+Response:
+```json
+{ "success": true }
+```
+
+---
+
+## 5.2 Generation Endpoint (Optional, Non-Telemetry)
+
+If cloud-hosted generation is provided to local clients, keep it separate from telemetry APIs.
+
+### `POST /generation/chat`
+
+```json
+{
+  "student_id": "uuid-v4-string",
+  "mode": "rag_answer",
+  "messages": [
+    { "role": "user", "content": "Explain parliament in simple terms" }
+  ],
+  "context": {
+    "notebook_id": "notebook-uuid",
+    "retrieval_chunks": ["..."],
+    "max_tokens": 700
+  }
+}
+```
+
+Response:
+```json
+{
+  "provider": "azure-openai",
+  "model": "gpt-4o-mini",
+  "output_text": "...",
+  "finish_reason": "stop"
+}
+```
+
+This endpoint is optional for Track B in early integration. Track A must keep local fallbacks so study flow remains usable when generation API is unavailable.
 
 ---
 

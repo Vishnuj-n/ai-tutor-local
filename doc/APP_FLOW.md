@@ -1,6 +1,6 @@
 # APP_FLOW.md
 ## User Journey & Screen Flow Specification
-> Version 2.2 | March 2026
+> Version 3.0 | March 2026
 
 ---
 
@@ -12,6 +12,10 @@ This document now separates:
 - **Planned Flow (Roadmap)**: Features designed in docs but not fully implemented yet.
 
 This split avoids confusion during development and testing.
+
+Pivot note:
+
+- Product direction is now **Guided AI Tutor** (task-board-first), not utility-button-first.
 
 ---
 
@@ -47,6 +51,7 @@ Dashboard fetches real snapshot data from backend:
 - Active notebooks
 - Pending sync count
 - Notebook ingestion rows/status
+- Today's guided tasks (when task engine is enabled)
 
 Sync footer also fetches live queue health from backend (`pending`, `health`, `next_retry`).
 
@@ -54,9 +59,14 @@ Current action wiring status:
 
 - `Start Review`: wired to backend FSRS flow.
 - `Upload File` (ingestion card): wired to backend ingestion flow.
-- `Ask a Question`: opens panel with demo response path.
-- `Upload PDF` (quick action button): placeholder UI action (not wired separately).
-- `Classroom Sync` (quick action button): placeholder UI action (not wired separately).
+- `Upload PDF` (quick action button): wired to same ingestion flow as Upload File.
+- `Ask a Question`: opens panel with backend event-streamed answer updates (currently demo answer content).
+- `Classroom Sync` (quick action button): opens sync panel with base URL/class code settings and cloud health probe.
+
+Target state:
+
+- quick actions are replaced by **Today's Task Board** cards.
+- each task card launches contextual flow (READ / REVIEW / QUIZ) from task metadata.
 
 ### 2.1.4 File Ingestion Flow
 
@@ -71,6 +81,7 @@ Current action wiring status:
    - if vector store is enabled and embedder is configured, save embeddings
 5. Document marked `ready` or `error`.
 6. Starter flashcards are auto-generated from first chunks for immediate review.
+7. Task engine (target) creates ordered daily tasks from extracted topics.
 
 **Current limitation:** this path is currently request/response (foreground) from UI and can feel blocking on larger files.
 
@@ -90,6 +101,12 @@ Current action wiring status:
 
 **Current limitation:** no live HTTP delivery to cloud API endpoint from this repo yet.
 
+Current Sprint 5 UI status:
+
+- Sync settings are stored locally (`sync_base_url`, `sync_class_code`).
+- User can test cloud reachability via `GET {base_url}/health` probe.
+- Join-class POST and event POST transport are planned next.
+
 Event compatibility note:
 
 - Local currently emits `flashcard_session_completed` for review completion telemetry.
@@ -99,9 +116,19 @@ Event compatibility note:
 ### 2.1.7 Ask a Question Panel (UI)
 
 1. User opens RAG panel and submits question.
-2. Frontend currently shows simulated HyDE/hybrid-retrieval response text.
+2. Frontend subscribes to backend stream events and appends answer text chunk-by-chunk.
+3. Backend currently emits demo answer content through stream events.
 
-**Current limitation:** RAG panel is not yet wired to backend retrieval + generation RPC.
+**Current limitation:** real retrieval + cloud generation pipeline is not fully wired; stream currently uses placeholder response content.
+
+### 2.1.8 Classroom Sync Settings (Sprint 5)
+
+1. User opens Classroom Sync panel.
+2. User saves teacher dashboard base URL and class code.
+3. User can run cloud health probe (`GET {base_url}/health`).
+4. Settings persist locally for later join/sync transport.
+
+**Current limitation:** join-class POST and batch sync transport are still being wired.
 
 ---
 
@@ -116,22 +143,34 @@ Event compatibility note:
    - call retrieval service
    - return grounded answer + chunk references
 
-3. Wire quick action placeholders:
-   - connect `Upload PDF` to same file picker/ingest path
-   - connect `Classroom Sync` to settings/class-join flow
+3. Complete Classroom Sync transport:
+   - wire `POST /classes/join` to saved base URL and class code
+   - wire `POST /sync` for queued events
 
-4. Align telemetry event naming:
+4. Promote task board as default home flow:
+   - fetch pending tasks from `daily_tasks`
+   - execute task with context routing (`READ` -> content context, `QUIZ` -> topic-scoped quiz)
+
+5. Align telemetry event naming:
    - standardize local event type to `flashcard_session`
    - keep temporary compatibility parser for old value during migration window
 
-5. Add cloud sync transport:
+6. Add cloud sync transport:
    - configure API base URL from settings/env
-   - send retryable queue items to `/api/v1/sync`
+   - send retryable queue items to `/sync`
    - treat `200` and `409` as sent
 
 ---
 
 ### 2.3 Planned Flow (Roadmap)
+
+### 2.3.0 Guided Tutor Daily Flow (Target)
+
+1. Student opens app and sees **Today's Task Board**.
+2. Task 1: `READ` opens exact PDF file + page/task context.
+3. Task 2: `REVIEW_FLASHCARDS` opens due flashcard set tied to that topic.
+4. Task 3: `TAKE_QUIZ` generates and runs topic-scoped quiz.
+5. Completing tasks unlocks next tasks and updates streak/progress.
 
 ### 2.3.1 First Launch / Onboarding (Planned Enhancements)
 

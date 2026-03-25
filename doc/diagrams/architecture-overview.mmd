@@ -1,0 +1,52 @@
+flowchart LR
+  subgraph Local[System A: ai-tutor-local]
+    FE[Wails Frontend\nfrontend/index.html + app.js]
+    APP[Wails Go Bridge\napp.go RPCs]
+
+    subgraph Core[Go Core Modules]
+      DB[(SQLite\nFTS5 + sqlite-vec + local tables)]
+      ING[ingestion]
+      EMB[embedding ONNX]
+      RET[retrieval]
+      GEN[generation provider interface]
+      FSRS[fsrs]
+      SYNC[sync queue service]
+      DASH[ui dashboard service]
+      TASK[taskengine]
+    end
+
+    FE --> APP
+    APP --> DASH
+    APP --> ING
+    APP --> FSRS
+    APP --> SYNC
+    APP --> TASK
+    APP --> RET
+    APP --> GEN
+
+    ING --> EMB
+    ING --> DB
+    EMB --> DB
+    RET --> DB
+    FSRS --> DB
+    SYNC --> DB
+    DASH --> DB
+    TASK --> DB
+  end
+
+  subgraph Cloud[System B: ai-tutor-cloud]
+    API[REST API]
+    PG[(PostgreSQL)]
+    TD[Teacher Dashboard]
+  end
+
+  subgraph LLM[Generation Providers]
+    AZ[Azure OpenAI primary]
+    FB[OpenAI-compatible fallback]
+  end
+
+  SYNC -. planned transport .-> API
+  API --> PG
+  TD --> API
+  GEN --> AZ
+  GEN --> FB

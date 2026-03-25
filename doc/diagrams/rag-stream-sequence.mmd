@@ -1,0 +1,24 @@
+sequenceDiagram
+  autonumber
+  participant U as Student
+  participant FE as Frontend RAG Panel
+  participant APP as app.go
+  participant RET as retrieval.Service
+  participant GEN as generation.Provider
+
+  U->>FE: Ask question
+  FE->>APP: StreamRAGAnswer(question)
+  APP-->>FE: event channel name
+  FE->>APP: Subscribe via EventsOn(channel)
+
+  Note over APP: Current state emits demo chunks
+  APP-->>FE: chunk events
+  APP-->>FE: done event with sources
+
+  Note over APP,RET: Planned full wiring
+  APP->>RET: Retrieve top chunks (HyDE + RRF)
+  RET-->>APP: Context chunks
+  APP->>GEN: GenerateStream(prompt, onToken)
+  GEN-->>APP: token callbacks
+  APP-->>FE: chunk events from model stream
+  APP-->>FE: done with grounded sources

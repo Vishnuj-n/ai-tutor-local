@@ -1,6 +1,6 @@
 # SCHEMA.md
 ## Database Schema — SQLite (Local) & PostgreSQL (Cloud)
-> Version 1.0 | March 2025
+> Version 1.1 | March 2026
 
 **This document is the shared data contract. Both developers must treat it as authoritative. Schema changes must be discussed and this file updated before implementation.**
 
@@ -54,6 +54,48 @@ CREATE TABLE chunks (
   tagged_content  TEXT NOT NULL,     -- '[Notebook - Chapter] content...' prefixed version
   token_count     INTEGER,
   created_at      TEXT NOT NULL
+);
+```
+
+---
+
+## `topics`
+
+```sql
+CREATE TABLE topics (
+  id              TEXT PRIMARY KEY,
+  notebook_id     TEXT NOT NULL REFERENCES notebooks(id) ON DELETE CASCADE,
+  document_id     TEXT REFERENCES documents(id) ON DELETE SET NULL,
+  title           TEXT NOT NULL,
+  description     TEXT,
+  source_heading  TEXT,
+  sequence_order  INTEGER DEFAULT 0,
+  mastery_state   TEXT DEFAULT 'new', -- new | learning | mastered
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL
+);
+```
+
+---
+
+## `daily_tasks`
+
+```sql
+CREATE TABLE daily_tasks (
+  id            TEXT PRIMARY KEY,   -- UUID
+  notebook_id   TEXT NOT NULL REFERENCES notebooks(id) ON DELETE CASCADE,
+  topic_id      TEXT REFERENCES topics(id) ON DELETE SET NULL,
+  task_type     TEXT NOT NULL,      -- READ | REVIEW_FLASHCARDS | TAKE_QUIZ
+  target_type   TEXT NOT NULL,      -- topic | chunk | document | flashcard_set
+  target_id     TEXT NOT NULL,      -- topic/chunk/document/task target identifier
+  title         TEXT NOT NULL,
+  instructions  TEXT,
+  status        TEXT NOT NULL DEFAULT 'pending', -- pending | completed | locked
+  due_date      TEXT NOT NULL,
+  position      INTEGER DEFAULT 0,
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL,
+  completed_at  TEXT
 );
 ```
 
@@ -172,6 +214,50 @@ CREATE TABLE sync_queue (
   attempts     INTEGER DEFAULT 0,
   last_attempt TEXT,
   status       TEXT DEFAULT 'pending'  -- pending | sent | failed
+);
+```
+
+---
+
+## `educational_telemetry`
+
+```sql
+CREATE TABLE educational_telemetry (
+  id                 TEXT PRIMARY KEY,
+  student_id         TEXT,
+  notebook_id        TEXT,
+  topic_id           TEXT,
+  event_type         TEXT NOT NULL,
+  activity_type      TEXT,
+  score              INTEGER,
+  total              INTEGER,
+  accuracy_pct       REAL,
+  time_spent_seconds INTEGER,
+  streak             INTEGER,
+  payload            TEXT,
+  created_at         TEXT NOT NULL,
+  synced             INTEGER DEFAULT 0
+);
+```
+
+---
+
+## `ai_diagnostic_telemetry`
+
+```sql
+CREATE TABLE ai_diagnostic_telemetry (
+  id               TEXT PRIMARY KEY,
+  provider         TEXT,
+  model            TEXT,
+  operation        TEXT NOT NULL,
+  latency_ms       INTEGER,
+  prompt_tokens    INTEGER,
+  completion_tokens INTEGER,
+  total_tokens     INTEGER,
+  status           TEXT,
+  error_message    TEXT,
+  metadata         TEXT,
+  created_at       TEXT NOT NULL
 );
 ```
 

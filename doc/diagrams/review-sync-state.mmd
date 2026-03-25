@@ -1,0 +1,23 @@
+stateDiagram-v2
+  [*] --> NewCard
+  NewCard --> Learning: First review rated
+  Learning --> Review: Stability increases
+  Review --> Relearning: Again on mature card
+  Relearning --> Review: Recovery reviews
+
+  state "Review Session" as Session {
+    [*] --> Active
+    Active --> Active: Rate card
+    Active --> Completed: Queue empty or exit
+  }
+
+  Session --> EventQueued: EmitTelemetry=true
+
+  state "Sync Queue Item" as Queue {
+    [*] --> pending
+    pending --> sent: Manual sync marks sent
+    pending --> failed: Validation error
+    failed --> pending: Retry window elapsed
+  }
+
+  EventQueued --> Queue

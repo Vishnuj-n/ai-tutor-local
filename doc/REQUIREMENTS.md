@@ -1,6 +1,6 @@
 # REQUIREMENTS.md
 ## Local-First AI Tutoring System with Behavioral Learning & Classroom Analytics
-> Version 1.0 | March 2025
+> Version 2.0 | March 2026
 
 ---
 
@@ -10,6 +10,11 @@ The **AI Tutoring & Classroom Analytics System** is a hybrid educational platfor
 
 1. **Local Learning Engine (System A)** — A privacy-first, offline-capable desktop app using RAG + FSRS to auto-generate and schedule study materials from uploaded documents. Runs entirely on the student's machine (Go + Wails).
 2. **Cloud Analytics Layer (System B)** — A centralized web platform that receives lightweight, anonymized telemetry from local apps, letting teachers monitor cohort progress without ever accessing private study content.
+
+Pivot target:
+
+- System A is now guided by a local **Task Engine** that schedules daily study tasks.
+- Generation is cloud-first (Azure OpenAI), while embeddings remain local.
 
 ---
 
@@ -32,6 +37,8 @@ The **AI Tutoring & Classroom Analytics System** is a hybrid educational platfor
 - **REQ-1.2** The system shall parse, semantically chunk (preserving heading boundaries), and embed uploaded documents using a local ONNX embedding model (`onnx/model_int8.onnx`).
 - **REQ-1.3** The system shall automatically generate flashcards, MCQ quizzes, and descriptive prompts from document chunks using the selected LLM. No manual creation required.
 - **REQ-1.4** All generated artifacts shall maintain a bidirectional reference to the originating document chunk, enabling click-through navigation back to the source paragraph.
+- **REQ-1.5** The system shall extract structured topics/objectives during ingestion and store them in `topics`.
+- **REQ-1.6** The system shall generate sequenced `daily_tasks` entries after ingestion (`READ`, `REVIEW_FLASHCARDS`, `TAKE_QUIZ`).
 
 ### 3.2 Retrieval Pipeline (Local)
 
@@ -39,12 +46,14 @@ The **AI Tutoring & Classroom Analytics System** is a hybrid educational platfor
 - **REQ-2.2** The system shall optionally apply a local cross-encoder reranker to improve relevance ranking of top-k retrieved chunks.
 - **REQ-2.3** The system shall use HyDE (Hypothetical Document Embeddings) to expand user queries before searching, improving retrieval over dense study material.
 - **REQ-2.4** Context sent to the LLM shall include retrieved chunks prepended with their document title and heading (e.g., `[Polity - Fundamental Rights] ...`).
+- **REQ-2.5** Hybrid search results shall be merged with Reciprocal Rank Fusion (RRF) before final context assembly.
 
 ### 3.3 Spaced Repetition & Study Engine (Local)
 
 - **REQ-3.1** The system shall implement the FSRS algorithm, tracking stability, retrievability, and difficulty per flashcard.
 - **REQ-3.2** The scheduler shall dynamically re-prioritize overdue cards if a student misses study sessions.
 - **REQ-3.3** A Timetable System shall accept total exam duration, daily study hours, and per-notebook weightage, and output a global study schedule.
+- **REQ-3.4** The home dashboard shall prioritize a **Today's Task Board** from `daily_tasks` over static utility actions.
 
 ### 3.4 Classroom Sync & Telemetry (Bridge)
 
@@ -53,6 +62,7 @@ The **AI Tutoring & Classroom Analytics System** is a hybrid educational platfor
   - **PERMITTED:** `student_id`, `name`, `USN`, `class_id`, `notebook_name`, `activity_type`, `time_spent_seconds`, `flashcards_completed`, `quiz_score`, `accuracy_pct`, `current_streak`, `synced_at`
   - **PROHIBITED:** raw document text, embeddings, generated notes, full flashcard content
 - **REQ-4.3** Sync shall be event-based (immediately after quiz) AND periodic (every 15 minutes). Offline payloads shall queue in SQLite and send in batch when connectivity is restored.
+- **REQ-4.4** Educational telemetry and AI diagnostics telemetry shall be stored and synced via separate logical channels/tables.
 
 ### 3.5 Teacher Dashboard (Cloud)
 
@@ -60,6 +70,13 @@ The **AI Tutoring & Classroom Analytics System** is a hybrid educational platfor
 - **REQ-5.2** The dashboard shall display class-level aggregated performance: average accuracy per topic, activity heatmaps, streak distributions.
 - **REQ-5.3** Teachers shall drill down into individual student performance (accuracy by notebook, session time, quiz scores over time).
 - **REQ-5.4** The dashboard shall support teacher queries, e.g., *"Which students have not studied for 3 days?"* or *"Lowest accuracy topic in Polity?"*
+
+### 3.6 LLM Provider, Routing, and Output Safety
+
+- **REQ-6.1** Generation shall use an `LLMProvider` abstraction supporting Azure OpenAI and fallback providers.
+- **REQ-6.2** Query handling shall support a router stage that decides which backend tool/path to execute.
+- **REQ-6.3** All structured LLM outputs (quiz/task/summaries) shall pass strict JSON unmarshal + validation with retry on malformed output.
+- **REQ-6.4** RAG answer delivery shall support streaming to frontend to reduce perceived latency.
 
 ---
 
@@ -74,11 +91,17 @@ The **AI Tutoring & Classroom Analytics System** is a hybrid educational platfor
 - Vector retrieval must complete in under 500ms to maintain uninterrupted study flow.
 - Background telemetry sync must be non-blocking and fail gracefully when offline.
 - PDF ingestion and embedding must run as a goroutine, never blocking the UI.
+- Cloud health probe checks (`GET {base_url}/health`) must fail fast and never block study interactions.
 
 ### 4.3 Usability
 - The local app requires zero manual configuration — SQLite initializes automatically on first launch.
 - The app must work fully offline; cloud sync is optional and additive.
 - Phase 1 supported formats: **PDF only**. Phase 2 adds `.docx` and `.md`.
+- Classroom sync base URL and class code must be editable from Settings at runtime.
+
+### 4.4 Contract Stability
+- `doc/DATA_API.md` is the single source of truth for cloud payload structure.
+- Local app sync logic must remain compatible with both `flashcard_session` and `flashcard_session_completed` event labels.
 
 ---
 
