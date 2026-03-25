@@ -3,11 +3,15 @@ package sync
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"ai-tutor-local/internal/db"
+
+	"strings"
+
+	sqlite3 "github.com/mattn/go-sqlite3"
 )
 
 // Service handles local analytics queueing for cloud sync.
@@ -161,6 +165,15 @@ func isDuplicateEventIDError(err error) bool {
 	if err == nil {
 		return false
 	}
+
+	var sqliteErr sqlite3.Error
+	if errors.As(err, &sqliteErr) {
+		if sqliteErr.Code == sqlite3.ErrConstraint {
+			return sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique || sqliteErr.ExtendedCode == sqlite3.ErrConstraintPrimaryKey
+		}
+	}
+
+	// Backward-compatible fallback for wrapped/non-standard driver errors.
 	lower := strings.ToLower(err.Error())
 	return strings.Contains(lower, "unique constraint") || strings.Contains(lower, "duplicate key")
 }
@@ -174,6 +187,9 @@ func validateEvent(event Event) error {
 	}
 	if strings.TrimSpace(event.NotebookID) == "" {
 		return fmt.Errorf("enqueue event: notebook_id is required")
+	}
+	if requiresActivityType(event.EventType) && strings.TrimSpace(event.ActivityType) == "" {
+		return fmt.Errorf("enqueue event: activity_type is required for event_type=%s", event.EventType)
 	}
 	if event.TimeSpentSeconds < 0 {
 		return fmt.Errorf("enqueue event: time_spent_seconds cannot be negative")
@@ -191,6 +207,15 @@ func validateEvent(event Event) error {
 	}
 
 	return nil
+}
+
+func requiresActivityType(eventType string) bool {
+	switch strings.TrimSpace(strings.ToLower(eventType)) {
+	case "quiz_completed", "flashcard_session", "flashcard_session_completed", "study_session":
+		return true
+	default:
+		return false
+	}
 }
 
 func retryDelay(item db.SyncQueueItem, now time.Time) int64 {

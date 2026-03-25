@@ -168,6 +168,21 @@ async function applySnapshot(snapshot) {
     syncStatusIndicator.classList.add("pulse");
   }
 
+  if (Array.isArray(snapshot.Ingestion) && snapshot.Ingestion.length > 0) {
+    notebooks.length = 0;
+    snapshot.Ingestion.forEach((row) => {
+      notebooks.push({
+        name: row.NotebookName || "Notebook",
+        file: row.Filename || "Unknown",
+        progress: typeof row.ProgressPct === "number" ? row.ProgressPct : 0,
+        state: row.Status || "pending",
+      });
+    });
+    renderIngestionList();
+    return;
+  }
+
+  // Backward-compatible fallback for older snapshot shapes.
   if (Array.isArray(snapshot.Notebooks) && snapshot.Notebooks.length > 0) {
     notebooks.length = 0;
     snapshot.Notebooks.forEach((nb) => {
@@ -182,6 +197,7 @@ async function applySnapshot(snapshot) {
         });
       }
     });
+    renderIngestionList();
   }
 }
 

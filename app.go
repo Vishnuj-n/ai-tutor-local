@@ -167,7 +167,8 @@ func (a *App) IngestDocument(filePath, notebookName string) (string, error) {
 	}
 
 	ingestSvc := ingestion.NewService(a.database)
-	ingestSvc.SetVectorStoreEnabled(a.vecEnabled)
+	// Wails upload flow currently does not wire a runtime embedder; keep vec writes off.
+	ingestSvc.SetVectorStoreEnabled(false)
 
 	doc, err := ingestSvc.RegisterDocument(ctx, nbID, trimmedPath)
 	if err != nil {

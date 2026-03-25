@@ -19,6 +19,7 @@ func TestEnqueueDuplicateEventIDIsIdempotent(t *testing.T) {
 	event := Event{
 		EventID:          uuid.NewString(),
 		EventType:        "flashcard_session_completed",
+		ActivityType:     "flashcard",
 		NotebookID:       uuid.NewString(),
 		NotebookName:     "Sprint4 Notebook",
 		TimeSpentSeconds: 120,
@@ -49,6 +50,7 @@ func TestEnqueueRejectsInvalidMetrics(t *testing.T) {
 	err := svc.Enqueue(Event{
 		EventID:          uuid.NewString(),
 		EventType:        "flashcard_session_completed",
+		ActivityType:     "flashcard",
 		NotebookID:       uuid.NewString(),
 		NotebookName:     "Sprint4 Notebook",
 		TimeSpentSeconds: 50,
@@ -69,6 +71,7 @@ func TestRunManualSyncMarksReadyItemsSentAndRespectsBackoff(t *testing.T) {
 	ready := Event{
 		EventID:          uuid.NewString(),
 		EventType:        "flashcard_session_completed",
+		ActivityType:     "flashcard",
 		NotebookID:       uuid.NewString(),
 		NotebookName:     "Sprint5 Notebook",
 		TimeSpentSeconds: 90,
@@ -90,6 +93,7 @@ func TestRunManualSyncMarksReadyItemsSentAndRespectsBackoff(t *testing.T) {
 	deferred := Event{
 		EventID:          uuid.NewString(),
 		EventType:        "flashcard_session_completed",
+		ActivityType:     "flashcard",
 		NotebookID:       uuid.NewString(),
 		NotebookName:     "Sprint5 Notebook",
 		TimeSpentSeconds: 120,
@@ -147,6 +151,7 @@ func TestGetStatusReturnsBacklogAndRetryWindow(t *testing.T) {
 	event := Event{
 		EventID:          uuid.NewString(),
 		EventType:        "flashcard_session_completed",
+		ActivityType:     "flashcard",
 		NotebookID:       uuid.NewString(),
 		NotebookName:     "Sprint5 Notebook",
 		TimeSpentSeconds: 42,

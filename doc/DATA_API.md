@@ -223,7 +223,7 @@ time_spent_seconds = (session_end_time - session_start_time).Seconds()
 
 Alternatively, aggregate from review_logs:
 ```
-SELECT SUM(time_taken_ms) / 1000 AS time_spent_seconds
+SELECT SUM(time_taken_ms) / 1000.0 AS time_spent_seconds
 FROM review_logs
 WHERE flashcard_id IN (cards reviewed in this session)
   AND reviewed_at BETWEEN session_start AND session_end

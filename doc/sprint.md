@@ -259,8 +259,8 @@ Status: Completed on 2026-03-21.
   - `GetDashboardSnapshot() (*ui.DashboardSnapshot, error)`
   - `GetStartupStatus() string` (planned)
 
-#### Phase 4D: Frontend ↔ Backend Wiring (IN PROGRESS)
-**Current Status**: Wails bindings active, dashboard/sync/review/upload RPC wiring in place, final QA pending
+#### Phase 4D: Frontend ↔ Backend Wiring (COMPLETED)
+**Current Status**: Completed on 2026-03-24 with runtime validation and updated docs.
 
 ### Phase 4D Continuation (2026-03-24)
 
@@ -278,28 +278,24 @@ Status: Completed on 2026-03-21.
 - Updated frontend bundling compatibility:
   - switched script tag to module mode in `frontend/index.html` to remove Vite bundling warning
 
-**Remaining Tasks** (by 2026-04-04):
-1. ⏳ Confirm `wails dev` launches successfully
-  - Start dev server: `cd repo-root && wails dev -tags "sqlite_fts5"`
-   - Verify window opens with static UI
-   - Check npm hot-reload works (CSS edit → page refresh)
-   
-2. ⏳ Wire Wails RPC bindings to frontend:
-   - Frontend calls `GetDashboardSnapshot()` on dashboard panel show
-   - Update dashboard cards with real database metrics
-   - Wire footer sync indicator to real sync queue count
-   - Test with `-dashboard-snapshot` CLI until Wails binding test-ready
-   
-3. ⏳ Implement basic review flow:
-  - ✅ Load due cards from backend queue (`GetNextDueCard()`)
-  - ✅ Apply FSRS rating updates via `RateDueCard()`
-  - ✅ Display real card Q&A in review panel
-  - ⏳ Add session-complete summary event from UI review loop (optional polish)
-   
-4. ⏳ Update documentation:
-   - Sprint 4 completion summary in this file
-   - Frontend/Wails integration guide in `frontend/README.md`
-  - List known limitations (native picker available with manual path prompt fallback)
+**Phase 4D Completion Checklist (2026-03-24):**
+1. ✅ Wails runtime startup validated with required SQLite tag
+  - `wails dev -tags "sqlite_fts5"` starts successfully in a clean single-instance run
+  - Frontend dev server and bindings generation complete
+
+2. ✅ Frontend wired to real Wails RPCs
+  - Dashboard snapshot + sync status RPC flow active
+  - Review loop uses real due-card fetch and FSRS rating update
+  - Upload flow uses backend ingestion RPC with native file picker + prompt fallback
+
+3. ✅ Review session completion flow finalized
+  - UI emits session summary at queue completion / review close
+  - Backend persists session summary via FSRS service and queues telemetry
+
+4. ✅ Documentation and build validation completed
+  - `doc/README.md` updated with tagged Wails run/build commands
+  - `frontend/README.md` updated for live wiring details
+  - Build/test checks passed (`go test ./internal/sync -v`, `go build ./...`, `npm run build`)
 
 ### Sprint 4 Test Cases
 
