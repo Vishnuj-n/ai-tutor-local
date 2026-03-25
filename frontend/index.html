@@ -106,7 +106,10 @@
         <article class="surface">
           <div class="surface-head">
             <h3>Notebook Ingestion Status</h3>
-            <button class="btn" id="simulate-upload">Upload File</button>
+            <div class="inline-upload-controls">
+              <input type="text" id="upload-notebook-name" placeholder="Notebook name" value="Manual Upload">
+              <button class="btn" id="simulate-upload">Upload File</button>
+            </div>
           </div>
           <ul id="ingestion-list" class="list"></ul>
         </article>
@@ -117,7 +120,7 @@
           </div>
           <div class="quick-actions">
             <button class="btn btn-primary" id="start-review">Start Review</button>
-            <button class="btn">Upload PDF</button>
+            <button class="btn" id="quick-upload-pdf">Upload PDF</button>
             <button class="btn" id="open-rag">Ask a Question</button>
             <button class="btn">Classroom Sync</button>
           </div>

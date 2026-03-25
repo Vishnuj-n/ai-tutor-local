@@ -7,6 +7,8 @@ const providerStatus = document.getElementById("provider-status");
 
 const ingestionList = document.getElementById("ingestion-list");
 const uploadFileBtn = document.getElementById("simulate-upload");
+const quickUploadPdfBtn = document.getElementById("quick-upload-pdf");
+const uploadNotebookNameInput = document.getElementById("upload-notebook-name");
 const syncNowFooterBtn = document.getElementById("sync-now");
 const syncStatusText = document.getElementById("sync-status-text");
 const syncStatusIndicator = document.getElementById("sync-status-indicator");
@@ -148,6 +150,72 @@ function validateProvider(provider, baseUrl, apiKey) {
     return { ok: false, message: "API key looks too short." };
   }
   return { ok: true, message: `${provider.toUpperCase()} endpoint validated (session only).` };
+}
+
+function deriveNotebookName(filePath) {
+  const fallback = "Manual Upload";
+  const typedName = uploadNotebookNameInput ? uploadNotebookNameInput.value.trim() : "";
+  if (typedName) {
+    return typedName;
+  }
+
+  const base = (filePath.split(/[\\/]/).pop() || "").trim();
+  if (!base) {
+    return fallback;
+  }
+
+  const withoutExt = base.replace(/\.[^.]+$/, "").trim();
+  return withoutExt || fallback;
+}
+
+async function handleUpload() {
+  let filePath = "";
+  if (window.go && window.go.main && window.go.main.App && window.go.main.App.PickDocumentPath) {
+    filePath = await window.go.main.App.PickDocumentPath();
+  }
+
+  if (!filePath) {
+    filePath = window.prompt("Enter full file path (.pdf/.txt/.md)") || "";
+  }
+
+  if (!filePath.trim()) {
+    return;
+  }
+
+  const notebookName = deriveNotebookName(filePath);
+  const filename = filePath.split(/[\\/]/).pop() || filePath;
+
+  try {
+    // Optimistic row so user immediately sees the notebook/file they just selected.
+    notebooks.unshift({
+      name: notebookName,
+      file: filename,
+      progress: 10,
+      state: "processing",
+    });
+    renderIngestionList();
+
+    if (window.go && window.go.main && window.go.main.App) {
+      const result = await window.go.main.App.IngestDocument(filePath.trim(), notebookName);
+      reviewFeedback.textContent = result || "Upload complete";
+      await loadSnapshot();
+      await refreshSyncStatus();
+      return;
+    }
+
+    notebooks[0].progress = 100;
+    notebooks[0].state = "ready";
+    renderIngestionList();
+    reviewFeedback.textContent = "Demo mode: simulated ingestion complete.";
+  } catch (err) {
+    console.error("Ingestion error:", err);
+    if (notebooks[0] && notebooks[0].name === notebookName && notebooks[0].file === filename) {
+      notebooks[0].state = "error";
+      notebooks[0].progress = 0;
+      renderIngestionList();
+    }
+    reviewFeedback.textContent = `Ingestion failed: ${err?.message || err}`;
+  }
 }
 
 async function applySnapshot(snapshot) {
@@ -417,44 +485,14 @@ backFromSettingsBtn.addEventListener("click", async () => {
 });
 
 uploadFileBtn.addEventListener("click", () => {
-  void (async () => {
-    let filePath = "";
-    if (window.go && window.go.main && window.go.main.App && window.go.main.App.PickDocumentPath) {
-      filePath = await window.go.main.App.PickDocumentPath();
-    }
-
-    if (!filePath) {
-      filePath = window.prompt("Enter full file path (.pdf/.txt/.md)") || "";
-    }
-
-    if (!filePath.trim()) {
-      return;
-    }
-
-    const notebookName = window.prompt("Notebook name", "Manual Upload") || "Manual Upload";
-
-    try {
-      if (window.go && window.go.main && window.go.main.App) {
-        const result = await window.go.main.App.IngestDocument(filePath.trim(), notebookName.trim());
-        reviewFeedback.textContent = result || "Upload complete";
-        await loadSnapshot();
-        renderIngestionList();
-      } else {
-        notebooks.push({
-          name: notebookName,
-          file: filePath.split(/[\\/]/).pop() || filePath,
-          progress: 100,
-          state: "ready",
-        });
-        renderIngestionList();
-        reviewFeedback.textContent = "Demo mode: simulated ingestion complete.";
-      }
-    } catch (err) {
-      console.error("Ingestion error:", err);
-      reviewFeedback.textContent = `Ingestion failed: ${err?.message || err}`;
-    }
-  })();
+  void handleUpload();
 });
+
+if (quickUploadPdfBtn) {
+  quickUploadPdfBtn.addEventListener("click", () => {
+    void handleUpload();
+  });
+}
 
 syncNowFooterBtn.addEventListener("click", async () => {
   syncStatusText.textContent = "Sync: Starting manual sync...";
