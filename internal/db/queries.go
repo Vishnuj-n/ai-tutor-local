@@ -175,14 +175,14 @@ func (q *ReviewLogQueries) Create(log *ReviewLog) error {
 	return q.db.Create(log).Error
 }
 
-func (q *ReviewLogQueries) SumTimeTakenMsBetween(notebookID string, start, end time.Time) (int64, error) {
-	var total int64
+func (q *ReviewLogQueries) SumTimeTakenMsBetween(notebookID string, start, end time.Time) (float64, error) {
+	var totalMs float64
 	err := q.db.Table("review_logs").
 		Select("COALESCE(SUM(review_logs.time_taken_ms), 0)").
 		Joins("JOIN flashcards ON flashcards.id = review_logs.flashcard_id").
 		Where("flashcards.notebook_id = ? AND review_logs.reviewed_at BETWEEN ? AND ?", notebookID, start, end).
-		Scan(&total).Error
-	return total, err
+		Scan(&totalMs).Error
+	return totalMs / 1000.0, err
 }
 
 // SyncQueueQueries provides operations for offline-first sync queue.
