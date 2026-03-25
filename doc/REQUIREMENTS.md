@@ -78,14 +78,6 @@ Pivot target:
 - **REQ-6.3** All structured LLM outputs (quiz/task/summaries) shall pass strict JSON unmarshal + validation with retry on malformed output.
 - **REQ-6.4** RAG answer delivery shall support streaming to frontend to reduce perceived latency.
 
-### 3.7 Phase 2 Required: Teacher Shared Content Pack (Read-Only)
-
-- **REQ-7.1** Teachers shall publish a read-only content pack for a class.
-- **REQ-7.2** Students shall import a teacher content pack as a new local notebook copy.
-- **REQ-7.3** Imported notebook copies are student-local and editable by students; teacher source pack remains immutable.
-- **REQ-7.4** No live collaborative editing is supported in this mode.
-- **REQ-7.5** Private student notebooks remain inaccessible to teachers and are never uploaded as content.
-
 ---
 
 ## 4. Non-Functional Requirements

@@ -263,57 +263,6 @@ CREATE TABLE ai_diagnostic_telemetry (
 
 ---
 
-## Phase 2 Required (Cloud-Only): Shared Content Pack Tables
-
-These tables are required for teacher read-only content distribution and student import flows.
-
-## `teacher_content_packs`
-
-```sql
-CREATE TABLE teacher_content_packs (
-  id             UUID PRIMARY KEY,
-  teacher_id     UUID NOT NULL,
-  class_id       UUID NOT NULL,
-  title          TEXT NOT NULL,
-  description    TEXT,
-  version        INTEGER NOT NULL DEFAULT 1,
-  manifest_json  JSONB NOT NULL,
-  published_at   TIMESTAMP,
-  created_at     TIMESTAMP NOT NULL DEFAULT now(),
-  updated_at     TIMESTAMP NOT NULL DEFAULT now()
-);
-```
-
-## `class_content_pack_assignments`
-
-```sql
-CREATE TABLE class_content_pack_assignments (
-  id             UUID PRIMARY KEY,
-  class_id       UUID NOT NULL,
-  content_pack_id UUID NOT NULL REFERENCES teacher_content_packs(id) ON DELETE CASCADE,
-  assigned_at    TIMESTAMP NOT NULL DEFAULT now(),
-  UNIQUE (class_id, content_pack_id)
-);
-```
-
-## `student_content_pack_imports`
-
-```sql
-CREATE TABLE student_content_pack_imports (
-  id              UUID PRIMARY KEY,
-  student_id      UUID NOT NULL,
-  class_id        UUID NOT NULL,
-  content_pack_id UUID NOT NULL REFERENCES teacher_content_packs(id) ON DELETE CASCADE,
-  imported_version INTEGER NOT NULL,
-  imported_at     TIMESTAMP NOT NULL DEFAULT now(),
-  status          TEXT NOT NULL DEFAULT 'completed'
-);
-```
-
-Privacy rule: teacher content pack publishing is separate from private student notebook content. Private student notebook data remains local-only unless explicitly represented as telemetry fields in `DATA_API.md`.
-
----
-
 ## `student_config`
 
 ```sql

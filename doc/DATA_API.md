@@ -29,30 +29,6 @@ Used by local app settings to verify cloud reachability before join/sync.
 
 ---
 
-## 1.1 Teacher Shared Content Pack Endpoints (Phase 2 Required)
-
-These endpoints are part of required Phase 2 implementation.
-
-### `GET /api/v1/classes/{class_id}/content-packs`
-
-Returns teacher-published read-only content packs available to the class.
-
-### `POST /api/v1/content-packs/{pack_id}/import`
-
-Triggers a student import operation that creates a new local notebook snapshot from the selected pack.
-
-Versioning rule: each import creates a local snapshot copy; no live two-way editing with teacher source.
-
-### `GET /api/v1/content-packs/{pack_id}/manifest`
-
-Returns metadata and file manifest for the selected content pack version.
-
-### `GET /api/v1/content-packs/{pack_id}/download`
-
-Returns download payload reference (or stream) required by local app to import as a notebook copy.
-
----
-
 ## 2. Student Endpoints (Called by Local App)
 
 ### `POST /classes/join`
