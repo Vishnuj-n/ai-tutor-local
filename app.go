@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -270,6 +272,90 @@ func (a *App) ProbeCloudHealth(baseURL string) (*CloudHealthProbeResult, error) 
 		LatencyMS:  time.Since(started).Milliseconds(),
 		CheckedAt:  time.Now().UTC().Format(time.RFC3339),
 	}, nil
+}
+
+type JoinClassRequest struct {
+	StudentID string `json:"student_id"`
+	Name      string `json:"name"`
+	USN       string `json:"usn"`
+	ClassCode string `json:"class_code"`
+}
+
+type JoinClassResponse struct {
+	Success   bool   `json:"success"`
+	ClassID   string `json:"class_id,omitempty"`
+	ClassName string `json:"class_name,omitempty"`
+	Error     string `json:"error,omitempty"`
+}
+
+func (a *App) JoinClass(studentID, name, usn, classCode string) (*JoinClassResponse, error) {
+	if a.startupErr != nil {
+		return nil, fmt.Errorf("app startup failed: %w", a.startupErr)
+	}
+	if a.database == nil {
+		return nil, fmt.Errorf("database is not initialized")
+	}
+
+	queries := db.NewStudentConfigQueries(a.database.DB)
+	baseURL, err := queries.Get("sync_base_url")
+	if err != nil {
+		return nil, fmt.Errorf("load sync_base_url: %w", err)
+	}
+	baseURL = strings.TrimSpace(baseURL)
+	if baseURL == "" {
+		return nil, fmt.Errorf("cloud base URL not configured")
+	}
+
+	baseURL = strings.TrimSuffix(baseURL, "/")
+	joinURL := baseURL + "/api/v1/classes/join"
+
+	reqBody := JoinClassRequest{
+		StudentID: strings.TrimSpace(studentID),
+		Name:      strings.TrimSpace(name),
+		USN:       strings.TrimSpace(usn),
+		ClassCode: strings.TrimSpace(classCode),
+	}
+
+	if reqBody.StudentID == "" {
+		return nil, fmt.Errorf("student_id is required")
+	}
+	if reqBody.Name == "" {
+		return nil, fmt.Errorf("name is required")
+	}
+	if reqBody.ClassCode == "" {
+		return nil, fmt.Errorf("class_code is required")
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("marshal join request: %w", err)
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Post(joinURL, "application/json", strings.NewReader(string(jsonData)))
+	if err != nil {
+		return nil, fmt.Errorf("POST %s: %w", joinURL, err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response body: %w", err)
+	}
+
+	var result JoinClassResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("parse response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		if result.Error != "" {
+			return &result, fmt.Errorf("join class failed: %s", result.Error)
+		}
+		return &result, fmt.Errorf("join class failed with status %d", resp.StatusCode)
+	}
+
+	return &result, nil
 }
 
 func (a *App) IngestDocument(filePath, notebookName string) (string, error) {

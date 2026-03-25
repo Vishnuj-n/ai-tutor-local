@@ -173,9 +173,7 @@ func isDuplicateEventIDError(err error) bool {
 		}
 	}
 
-	// Backward-compatible fallback for wrapped/non-standard driver errors.
-	lower := strings.ToLower(err.Error())
-	return strings.Contains(lower, "unique constraint") || strings.Contains(lower, "duplicate key")
+	return false
 }
 
 func validateEvent(event Event) error {
@@ -190,6 +188,11 @@ func validateEvent(event Event) error {
 	}
 	if requiresActivityType(event.EventType) && strings.TrimSpace(event.ActivityType) == "" {
 		return fmt.Errorf("enqueue event: activity_type is required for event_type=%s", event.EventType)
+	}
+	if requiresActivityType(event.EventType) && strings.TrimSpace(event.ActivityType) != "" {
+		if !isValidActivityType(event.ActivityType) {
+			return fmt.Errorf("enqueue event: invalid activity_type=%s (must be one of: flashcard, quiz, reading, search)", event.ActivityType)
+		}
 	}
 	if event.TimeSpentSeconds < 0 {
 		return fmt.Errorf("enqueue event: time_spent_seconds cannot be negative")
@@ -212,6 +215,16 @@ func validateEvent(event Event) error {
 func requiresActivityType(eventType string) bool {
 	switch strings.TrimSpace(strings.ToLower(eventType)) {
 	case "quiz_completed", "flashcard_session", "flashcard_session_completed", "study_session":
+		return true
+	default:
+		return false
+	}
+}
+
+func isValidActivityType(activityType string) bool {
+	normalized := strings.TrimSpace(strings.ToLower(activityType))
+	switch normalized {
+	case "flashcard", "quiz", "reading", "search":
 		return true
 	default:
 		return false
