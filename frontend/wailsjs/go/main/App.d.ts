@@ -12,14 +12,20 @@ export function GetNextDueCard():Promise<main.ReviewCardDTO>;
 
 export function GetStartupStatus():Promise<string>;
 
+export function GetSyncSettings():Promise<main.SyncSettingsDTO>;
+
 export function GetSyncStatus():Promise<sync.SyncStatus>;
 
 export function IngestDocument(arg1:string,arg2:string):Promise<string>;
 
 export function PickDocumentPath():Promise<string>;
 
+export function ProbeCloudHealth(arg1:string):Promise<main.CloudHealthProbeResult>;
+
 export function RateDueCard(arg1:main.ReviewRateInput):Promise<main.ReviewRateResult>;
 
 export function RunManualSync():Promise<string>;
+
+export function SaveSyncSettings(arg1:string,arg2:string):Promise<string>;
 
 export function StreamRAGAnswer(arg1:string):Promise<string>;

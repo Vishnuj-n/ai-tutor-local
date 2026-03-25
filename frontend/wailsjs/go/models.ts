@@ -1,5 +1,27 @@
 export namespace main {
 	
+	export class CloudHealthProbeResult {
+	    url: string;
+	    ok: boolean;
+	    status_code: number;
+	    message?: string;
+	    latency_ms: number;
+	    checked_at: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CloudHealthProbeResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.ok = source["ok"];
+	        this.status_code = source["status_code"];
+	        this.message = source["message"];
+	        this.latency_ms = source["latency_ms"];
+	        this.checked_at = source["checked_at"];
+	    }
+	}
 	export class ReviewCardDTO {
 	    flashcard_id: string;
 	    notebook_id: string;
@@ -92,6 +114,22 @@ export namespace main {
 	        this.correct_recall_count = source["correct_recall_count"];
 	        this.total_time_taken_ms = source["total_time_taken_ms"];
 	        this.emit_telemetry = source["emit_telemetry"];
+	    }
+	}
+	export class SyncSettingsDTO {
+	    base_url: string;
+	    class_code: string;
+	    student_name?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SyncSettingsDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.base_url = source["base_url"];
+	        this.class_code = source["class_code"];
+	        this.student_name = source["student_name"];
 	    }
 	}
 

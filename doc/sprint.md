@@ -347,6 +347,25 @@ Status: Completed on 2026-03-21.
   - manual sync sends ready rows and skips rows still under backoff
   - sync status reports degraded health with non-zero next retry delay when failed rows exist
 
+### Sprint 5 Continuation (2026-03-25)
+
+- Added Classroom Sync panel UI in `frontend/index.html` and `frontend/app.js`:
+  - cloud base URL input
+  - class code input
+  - load/save settings flow
+  - cloud health probe button
+- Added backend Wails RPC methods in `app.go`:
+  - `GetSyncSettings()`
+  - `SaveSyncSettings(baseURL, classCode)`
+  - `ProbeCloudHealth(baseURL)`
+- Added local persistence for sync settings via `student_config` keys:
+  - `sync_base_url`
+  - `sync_class_code`
+- Improved upload UX:
+  - removed notebook-name popup field from dashboard header
+  - notebook name now auto-derives from selected filename
+  - both Upload buttons now use the same upload path
+
 ### Sprint 5 Scope
 
 #### Phase 5A: Sync Service Hardening

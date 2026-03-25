@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -71,6 +72,21 @@ type RAGStreamEvent struct {
 	Text    string   `json:"text,omitempty"`
 	Sources []string `json:"sources,omitempty"`
 	Error   string   `json:"error,omitempty"`
+}
+
+type SyncSettingsDTO struct {
+	BaseURL     string `json:"base_url"`
+	ClassCode   string `json:"class_code"`
+	StudentName string `json:"student_name,omitempty"`
+}
+
+type CloudHealthProbeResult struct {
+	URL        string `json:"url"`
+	OK         bool   `json:"ok"`
+	StatusCode int    `json:"status_code"`
+	Message    string `json:"message,omitempty"`
+	LatencyMS  int64  `json:"latency_ms"`
+	CheckedAt  string `json:"checked_at"`
 }
 
 func NewApp() *App {
@@ -142,6 +158,118 @@ func (a *App) RunManualSync() (string, error) {
 	}
 
 	return fmt.Sprintf("attempted=%d sent=%d failed=%d skipped=%d", result.Attempted, result.Sent, result.Failed, result.Skipped), nil
+}
+
+func (a *App) GetSyncSettings() (*SyncSettingsDTO, error) {
+	if a.startupErr != nil {
+		return nil, fmt.Errorf("app startup failed: %w", a.startupErr)
+	}
+	if a.database == nil {
+		return nil, fmt.Errorf("database is not initialized")
+	}
+
+	queries := db.NewStudentConfigQueries(a.database.DB)
+	baseURL, err := queries.Get("sync_base_url")
+	if err != nil {
+		return nil, fmt.Errorf("load sync_base_url: %w", err)
+	}
+	classCode, err := queries.Get("sync_class_code")
+	if err != nil {
+		return nil, fmt.Errorf("load sync_class_code: %w", err)
+	}
+	studentName, err := queries.Get("student_name")
+	if err != nil {
+		return nil, fmt.Errorf("load student_name: %w", err)
+	}
+
+	return &SyncSettingsDTO{
+		BaseURL:     baseURL,
+		ClassCode:   classCode,
+		StudentName: studentName,
+	}, nil
+}
+
+func (a *App) SaveSyncSettings(baseURL, classCode string) (string, error) {
+	if a.startupErr != nil {
+		return "", fmt.Errorf("app startup failed: %w", a.startupErr)
+	}
+	if a.database == nil {
+		return "", fmt.Errorf("database is not initialized")
+	}
+
+	normalizedBaseURL := strings.TrimSpace(baseURL)
+	normalizedClassCode := strings.ToUpper(strings.TrimSpace(classCode))
+	if normalizedBaseURL == "" {
+		return "", fmt.Errorf("base URL is required")
+	}
+	if !strings.HasPrefix(strings.ToLower(normalizedBaseURL), "http://") && !strings.HasPrefix(strings.ToLower(normalizedBaseURL), "https://") {
+		return "", fmt.Errorf("base URL must start with http:// or https://")
+	}
+
+	queries := db.NewStudentConfigQueries(a.database.DB)
+	if err := queries.Set("sync_base_url", strings.TrimSuffix(normalizedBaseURL, "/")); err != nil {
+		return "", fmt.Errorf("save sync_base_url: %w", err)
+	}
+	if err := queries.Set("sync_class_code", normalizedClassCode); err != nil {
+		return "", fmt.Errorf("save sync_class_code: %w", err)
+	}
+
+	return "Classroom sync settings saved", nil
+}
+
+func (a *App) ProbeCloudHealth(baseURL string) (*CloudHealthProbeResult, error) {
+	if a.startupErr != nil {
+		return nil, fmt.Errorf("app startup failed: %w", a.startupErr)
+	}
+
+	normalizedBaseURL := strings.TrimSpace(baseURL)
+	if normalizedBaseURL == "" {
+		if a.database == nil {
+			return nil, fmt.Errorf("database is not initialized")
+		}
+		queries := db.NewStudentConfigQueries(a.database.DB)
+		storedBaseURL, err := queries.Get("sync_base_url")
+		if err != nil {
+			return nil, fmt.Errorf("load sync_base_url: %w", err)
+		}
+		normalizedBaseURL = strings.TrimSpace(storedBaseURL)
+	}
+	if normalizedBaseURL == "" {
+		return nil, fmt.Errorf("base URL is required")
+	}
+
+	normalizedBaseURL = strings.TrimSuffix(normalizedBaseURL, "/")
+	healthURL := normalizedBaseURL + "/health"
+
+	client := &http.Client{Timeout: 12 * time.Second}
+	started := time.Now().UTC()
+	resp, err := client.Get(healthURL)
+	if err != nil {
+		return &CloudHealthProbeResult{
+			URL:        healthURL,
+			OK:         false,
+			StatusCode: 0,
+			Message:    err.Error(),
+			LatencyMS:  time.Since(started).Milliseconds(),
+			CheckedAt:  time.Now().UTC().Format(time.RFC3339),
+		}, nil
+	}
+	defer resp.Body.Close()
+
+	ok := resp.StatusCode >= 200 && resp.StatusCode < 300
+	msg := "ok"
+	if !ok {
+		msg = "non-2xx response from health endpoint"
+	}
+
+	return &CloudHealthProbeResult{
+		URL:        healthURL,
+		OK:         ok,
+		StatusCode: resp.StatusCode,
+		Message:    msg,
+		LatencyMS:  time.Since(started).Milliseconds(),
+		CheckedAt:  time.Now().UTC().Format(time.RFC3339),
+	}, nil
 }
 
 func (a *App) IngestDocument(filePath, notebookName string) (string, error) {

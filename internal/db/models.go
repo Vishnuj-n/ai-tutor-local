@@ -12,6 +12,8 @@ type Notebook struct {
 
 	// Relationships
 	Documents   []Document    `gorm:"foreignKey:NotebookID;constraint:OnDelete:CASCADE" json:"documents,omitempty"`
+	Topics      []Topic       `gorm:"foreignKey:NotebookID;constraint:OnDelete:CASCADE" json:"topics,omitempty"`
+	DailyTasks  []DailyTask   `gorm:"foreignKey:NotebookID;constraint:OnDelete:CASCADE" json:"daily_tasks,omitempty"`
 	Flashcards  []Flashcard   `gorm:"foreignKey:NotebookID;constraint:OnDelete:CASCADE" json:"flashcards,omitempty"`
 	Chunks      []Chunk       `gorm:"foreignKey:NotebookID" json:"chunks,omitempty"`
 	QuizSession []QuizSession `gorm:"foreignKey:NotebookID" json:"quiz_sessions,omitempty"`
@@ -49,6 +51,38 @@ type Chunk struct {
 	// Relationships
 	Document   Document    `gorm:"foreignKey:DocumentID;constraint:OnDelete:CASCADE" json:"document,omitempty"`
 	Flashcards []Flashcard `gorm:"foreignKey:ChunkID" json:"flashcards,omitempty"`
+}
+
+// Topic represents a structured learning objective extracted from ingested documents.
+type Topic struct {
+	ID            string    `gorm:"primaryKey" json:"id"`
+	NotebookID    string    `gorm:"not null;index" json:"notebook_id"`
+	DocumentID    *string   `gorm:"index" json:"document_id,omitempty"`
+	Title         string    `gorm:"not null" json:"title"`
+	Description   string    `gorm:"type:text" json:"description,omitempty"`
+	SourceHeading string    `json:"source_heading,omitempty"`
+	SequenceOrder int       `gorm:"default:0" json:"sequence_order"`
+	MasteryState  string    `gorm:"default:'new'" json:"mastery_state"` // new | learning | mastered
+	CreatedAt     time.Time `gorm:"autoCreateTime:milli" json:"created_at"`
+	UpdatedAt     time.Time `gorm:"autoUpdateTime:milli" json:"updated_at"`
+}
+
+// DailyTask is the guided task-board unit for proactive tutoring.
+type DailyTask struct {
+	ID           string     `gorm:"primaryKey" json:"id"`
+	NotebookID   string     `gorm:"not null;index" json:"notebook_id"`
+	TopicID      *string    `gorm:"index" json:"topic_id,omitempty"`
+	TaskType     string     `gorm:"not null;index" json:"task_type"` // READ | REVIEW_FLASHCARDS | TAKE_QUIZ
+	TargetType   string     `gorm:"not null" json:"target_type"`     // topic | chunk | document | flashcard_set
+	TargetID     string     `gorm:"not null;index" json:"target_id"`
+	Title        string     `gorm:"not null" json:"title"`
+	Instructions string     `gorm:"type:text" json:"instructions,omitempty"`
+	Status       string     `gorm:"not null;default:'pending';index" json:"status"` // pending | completed | locked
+	DueDate      time.Time  `gorm:"not null;index" json:"due_date"`
+	Position     int        `gorm:"default:0" json:"position"`
+	CreatedAt    time.Time  `gorm:"autoCreateTime:milli" json:"created_at"`
+	UpdatedAt    time.Time  `gorm:"autoUpdateTime:milli" json:"updated_at"`
+	CompletedAt  *time.Time `json:"completed_at,omitempty"`
 }
 
 // Flashcard represents a question-answer card for spaced repetition
@@ -114,6 +148,48 @@ type StudySession struct {
 	StartedAt           time.Time `gorm:"not null" json:"started_at"`
 	EndedAt             time.Time `gorm:"not null" json:"ended_at"`
 	Synced              int       `gorm:"default:0;index" json:"synced"` // 0 = pending, 1 = synced
+}
+
+// EducationalTelemetry stores sync-safe educational metrics.
+type EducationalTelemetry struct {
+	ID               string    `gorm:"primaryKey" json:"id"`
+	StudentID        string    `gorm:"index" json:"student_id,omitempty"`
+	NotebookID       string    `gorm:"index" json:"notebook_id,omitempty"`
+	TopicID          string    `gorm:"index" json:"topic_id,omitempty"`
+	EventType        string    `gorm:"not null;index" json:"event_type"`
+	ActivityType     string    `json:"activity_type,omitempty"`
+	Score            *int      `json:"score,omitempty"`
+	Total            *int      `json:"total,omitempty"`
+	AccuracyPct      *float32  `json:"accuracy_pct,omitempty"`
+	TimeSpentSeconds *int      `json:"time_spent_seconds,omitempty"`
+	Streak           *int      `json:"streak,omitempty"`
+	Payload          string    `gorm:"type:text" json:"payload,omitempty"`
+	CreatedAt        time.Time `gorm:"autoCreateTime:milli;index:idx_edu_created,sort:desc" json:"created_at"`
+	Synced           int       `gorm:"default:0;index" json:"synced"`
+}
+
+func (EducationalTelemetry) TableName() string {
+	return "educational_telemetry"
+}
+
+// AIDiagnosticTelemetry stores model/runtime diagnostics separate from educational metrics.
+type AIDiagnosticTelemetry struct {
+	ID               string    `gorm:"primaryKey" json:"id"`
+	Provider         string    `json:"provider,omitempty"`
+	Model            string    `json:"model,omitempty"`
+	Operation        string    `gorm:"not null;index" json:"operation"`
+	LatencyMS        *int      `json:"latency_ms,omitempty"`
+	PromptTokens     *int      `json:"prompt_tokens,omitempty"`
+	CompletionTokens *int      `json:"completion_tokens,omitempty"`
+	TotalTokens      *int      `json:"total_tokens,omitempty"`
+	Status           string    `json:"status,omitempty"`
+	ErrorMessage     string    `gorm:"type:text" json:"error_message,omitempty"`
+	Metadata         string    `gorm:"type:text" json:"metadata,omitempty"`
+	CreatedAt        time.Time `gorm:"autoCreateTime:milli;index:idx_ai_diag_created,sort:desc" json:"created_at"`
+}
+
+func (AIDiagnosticTelemetry) TableName() string {
+	return "ai_diagnostic_telemetry"
 }
 
 // SyncQueueItem represents a pending analytics event to be synced to cloud

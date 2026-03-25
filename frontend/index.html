@@ -107,7 +107,6 @@
           <div class="surface-head">
             <h3>Notebook Ingestion Status</h3>
             <div class="inline-upload-controls">
-              <input type="text" id="upload-notebook-name" placeholder="Notebook name" value="Manual Upload">
               <button class="btn" id="simulate-upload">Upload File</button>
             </div>
           </div>
@@ -122,10 +121,39 @@
             <button class="btn btn-primary" id="start-review">Start Review</button>
             <button class="btn" id="quick-upload-pdf">Upload PDF</button>
             <button class="btn" id="open-rag">Ask a Question</button>
-            <button class="btn">Classroom Sync</button>
+            <button class="btn" id="open-classroom-sync">Classroom Sync</button>
           </div>
         </article>
       </div>
+    </section>
+
+    <section class="panel hidden" id="classroom-panel">
+      <div class="panel-head">
+        <h2>Classroom Sync</h2>
+        <p>Configure cloud sync endpoint and class code for Sprint 5 integration.</p>
+      </div>
+      <article class="surface">
+        <div class="form-grid">
+          <label class="full-width">
+            Teacher Dashboard URL
+            <input type="text" id="cloud-base-url" placeholder="https://your-tutor-app.onrender.com/api/v1">
+          </label>
+          <label>
+            Class Code
+            <input type="text" id="class-code" placeholder="ABC123">
+          </label>
+          <label>
+            Student Name (from onboarding)
+            <input type="text" id="sync-student-name" disabled>
+          </label>
+        </div>
+        <div class="form-actions" style="margin-top:0.9rem;">
+          <button class="btn btn-primary" id="save-sync-settings">Save Settings</button>
+          <button class="btn" id="test-cloud-connection">Test Cloud Connection</button>
+          <button class="btn" id="back-dashboard-classroom">Back</button>
+        </div>
+        <p id="classroom-status" class="status">Not configured.</p>
+      </article>
     </section>
 
     <section class="panel hidden" id="review-panel">

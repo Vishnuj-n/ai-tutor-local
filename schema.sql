@@ -50,6 +50,50 @@ CREATE INDEX IF NOT EXISTS idx_chunks_document ON chunks(document_id);
 CREATE INDEX IF NOT EXISTS idx_chunks_notebook ON chunks(notebook_id);
 
 -- ============================================================================
+-- TOPICS (structured learning objectives extracted from content)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS topics (
+  id              TEXT PRIMARY KEY,
+  notebook_id     TEXT NOT NULL REFERENCES notebooks(id) ON DELETE CASCADE,
+  document_id     TEXT REFERENCES documents(id) ON DELETE SET NULL,
+  title           TEXT NOT NULL,
+  description     TEXT,
+  source_heading  TEXT,
+  sequence_order  INTEGER DEFAULT 0,
+  mastery_state   TEXT DEFAULT 'new', -- new | learning | mastered
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_topics_notebook ON topics(notebook_id);
+CREATE INDEX IF NOT EXISTS idx_topics_document ON topics(document_id);
+
+-- ============================================================================
+-- DAILY TASKS (guided tutor task board)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS daily_tasks (
+  id            TEXT PRIMARY KEY,
+  notebook_id   TEXT NOT NULL REFERENCES notebooks(id) ON DELETE CASCADE,
+  topic_id      TEXT REFERENCES topics(id) ON DELETE SET NULL,
+  task_type     TEXT NOT NULL,   -- READ | REVIEW_FLASHCARDS | TAKE_QUIZ
+  target_type   TEXT NOT NULL,   -- topic | chunk | document | flashcard_set
+  target_id     TEXT NOT NULL,
+  title         TEXT NOT NULL,
+  instructions  TEXT,
+  status        TEXT NOT NULL DEFAULT 'pending', -- pending | completed | locked
+  due_date      TEXT NOT NULL,
+  position      INTEGER DEFAULT 0,
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL,
+  completed_at  TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_tasks_due ON daily_tasks(due_date);
+CREATE INDEX IF NOT EXISTS idx_daily_tasks_status ON daily_tasks(status);
+CREATE INDEX IF NOT EXISTS idx_daily_tasks_notebook ON daily_tasks(notebook_id);
+CREATE INDEX IF NOT EXISTS idx_daily_tasks_topic ON daily_tasks(topic_id);
+
+-- ============================================================================
 -- FULL-TEXT SEARCH (FTS5)
 -- ============================================================================
 CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
@@ -161,6 +205,50 @@ CREATE TABLE IF NOT EXISTS study_sessions (
 
 CREATE INDEX IF NOT EXISTS idx_study_sessions_notebook ON study_sessions(notebook_id);
 CREATE INDEX IF NOT EXISTS idx_study_sessions_synced ON study_sessions(synced);
+
+-- ============================================================================
+-- EDUCATIONAL TELEMETRY (sync-safe learning metrics)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS educational_telemetry (
+  id                 TEXT PRIMARY KEY,
+  student_id         TEXT,
+  notebook_id        TEXT,
+  topic_id           TEXT,
+  event_type         TEXT NOT NULL,
+  activity_type      TEXT,
+  score              INTEGER,
+  total              INTEGER,
+  accuracy_pct       REAL,
+  time_spent_seconds INTEGER,
+  streak             INTEGER,
+  payload            TEXT,
+  created_at         TEXT NOT NULL,
+  synced             INTEGER DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_edu_telemetry_created ON educational_telemetry(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_edu_telemetry_synced ON educational_telemetry(synced);
+
+-- ============================================================================
+-- AI DIAGNOSTIC TELEMETRY (non-educational model/runtime diagnostics)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS ai_diagnostic_telemetry (
+  id                 TEXT PRIMARY KEY,
+  provider           TEXT,
+  model              TEXT,
+  operation          TEXT NOT NULL,
+  latency_ms         INTEGER,
+  prompt_tokens      INTEGER,
+  completion_tokens  INTEGER,
+  total_tokens       INTEGER,
+  status             TEXT,
+  error_message      TEXT,
+  metadata           TEXT,
+  created_at         TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_diag_created ON ai_diagnostic_telemetry(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_diag_operation ON ai_diagnostic_telemetry(operation);
 
 -- ============================================================================
 -- SYNC QUEUE (offline-first analytics)

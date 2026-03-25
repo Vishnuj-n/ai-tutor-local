@@ -8,7 +8,6 @@ const providerStatus = document.getElementById("provider-status");
 const ingestionList = document.getElementById("ingestion-list");
 const uploadFileBtn = document.getElementById("simulate-upload");
 const quickUploadPdfBtn = document.getElementById("quick-upload-pdf");
-const uploadNotebookNameInput = document.getElementById("upload-notebook-name");
 const syncNowFooterBtn = document.getElementById("sync-now");
 const syncStatusText = document.getElementById("sync-status-text");
 const syncStatusIndicator = document.getElementById("sync-status-indicator");
@@ -17,14 +16,24 @@ const openSettingsBtn = document.getElementById("open-settings");
 const backFromSettingsBtn = document.getElementById("back-from-settings");
 const reviewPanel = document.getElementById("review-panel");
 const ragPanel = document.getElementById("rag-panel");
+const classroomPanel = document.getElementById("classroom-panel");
 
 const startReviewBtn = document.getElementById("start-review");
 const openRagBtn = document.getElementById("open-rag");
+const openClassroomSyncBtn = document.getElementById("open-classroom-sync");
 const showAnswerBtn = document.getElementById("show-answer");
 const reviewAnswer = document.getElementById("review-answer");
 const reviewFeedback = document.getElementById("review-feedback");
 const backDashboardReviewBtn = document.getElementById("back-dashboard-review");
 const backDashboardRagBtn = document.getElementById("back-dashboard-rag");
+const backDashboardClassroomBtn = document.getElementById("back-dashboard-classroom");
+
+const cloudBaseUrlInput = document.getElementById("cloud-base-url");
+const classCodeInput = document.getElementById("class-code");
+const syncStudentNameInput = document.getElementById("sync-student-name");
+const saveSyncSettingsBtn = document.getElementById("save-sync-settings");
+const testCloudConnectionBtn = document.getElementById("test-cloud-connection");
+const classroomStatus = document.getElementById("classroom-status");
 
 const runRagBtn = document.getElementById("run-rag");
 const ragQuestion = document.getElementById("rag-question");
@@ -93,6 +102,7 @@ function showDashboard() {
   onboardingPanel.classList.add("hidden");
   reviewPanel.classList.add("hidden");
   ragPanel.classList.add("hidden");
+  classroomPanel.classList.add("hidden");
   dashboardPanel.classList.remove("hidden");
 
   enterDashboardBtn.classList.remove("hidden");
@@ -105,6 +115,7 @@ function showOnboarding(mode) {
   dashboardPanel.classList.add("hidden");
   reviewPanel.classList.add("hidden");
   ragPanel.classList.add("hidden");
+  classroomPanel.classList.add("hidden");
   onboardingPanel.classList.remove("hidden");
 
   if (onboardingMode === "settings" && isSetupComplete()) {
@@ -123,6 +134,7 @@ function showPanel(panel) {
   dashboardPanel.classList.add("hidden");
   reviewPanel.classList.add("hidden");
   ragPanel.classList.add("hidden");
+  classroomPanel.classList.add("hidden");
   panel.classList.remove("hidden");
 }
 
@@ -153,11 +165,7 @@ function validateProvider(provider, baseUrl, apiKey) {
 }
 
 function deriveNotebookName(filePath) {
-  const fallback = "Manual Upload";
-  const typedName = uploadNotebookNameInput ? uploadNotebookNameInput.value.trim() : "";
-  if (typedName) {
-    return typedName;
-  }
+  const fallback = "General Notebook";
 
   const base = (filePath.split(/[\\/]/).pop() || "").trim();
   if (!base) {
@@ -166,6 +174,28 @@ function deriveNotebookName(filePath) {
 
   const withoutExt = base.replace(/\.[^.]+$/, "").trim();
   return withoutExt || fallback;
+}
+
+async function loadSyncSettingsIntoPanel() {
+  const fallbackStudent = document.getElementById("student-name")?.value?.trim() || "";
+  if (syncStudentNameInput) {
+    syncStudentNameInput.value = fallbackStudent;
+  }
+
+  try {
+    if (window.go && window.go.main && window.go.main.App && window.go.main.App.GetSyncSettings) {
+      const settings = await window.go.main.App.GetSyncSettings();
+      if (settings) {
+        cloudBaseUrlInput.value = settings.base_url || "";
+        classCodeInput.value = settings.class_code || "";
+        if (syncStudentNameInput && settings.student_name) {
+          syncStudentNameInput.value = settings.student_name;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Unable to load sync settings:", err);
+  }
 }
 
 async function handleUpload() {
@@ -529,6 +559,16 @@ openRagBtn.addEventListener("click", () => {
   showPanel(ragPanel);
 });
 
+if (openClassroomSyncBtn) {
+  openClassroomSyncBtn.addEventListener("click", () => {
+    void (async () => {
+      await loadSyncSettingsIntoPanel();
+      classroomStatus.textContent = "Configure cloud URL and class code, then test connection.";
+      showPanel(classroomPanel);
+    })();
+  });
+}
+
 backDashboardReviewBtn.addEventListener("click", () => {
   void (async () => {
     await completeReviewSession("review closed");
@@ -539,6 +579,64 @@ backDashboardReviewBtn.addEventListener("click", () => {
 backDashboardRagBtn.addEventListener("click", () => {
   showPanel(dashboardPanel);
 });
+
+if (backDashboardClassroomBtn) {
+  backDashboardClassroomBtn.addEventListener("click", () => {
+    showPanel(dashboardPanel);
+  });
+}
+
+if (saveSyncSettingsBtn) {
+  saveSyncSettingsBtn.addEventListener("click", () => {
+    void (async () => {
+      const baseUrl = cloudBaseUrlInput.value.trim();
+      const classCode = classCodeInput.value.trim();
+      if (!baseUrl) {
+        classroomStatus.textContent = "Base URL is required.";
+        return;
+      }
+
+      try {
+        if (window.go && window.go.main && window.go.main.App && window.go.main.App.SaveSyncSettings) {
+          const message = await window.go.main.App.SaveSyncSettings(baseUrl, classCode);
+          classroomStatus.textContent = message || "Sync settings saved.";
+          return;
+        }
+        classroomStatus.textContent = "Demo mode: settings saved locally in UI only.";
+      } catch (err) {
+        classroomStatus.textContent = `Save failed: ${err?.message || err}`;
+      }
+    })();
+  });
+}
+
+if (testCloudConnectionBtn) {
+  testCloudConnectionBtn.addEventListener("click", () => {
+    void (async () => {
+      const baseUrl = cloudBaseUrlInput.value.trim();
+      if (!baseUrl) {
+        classroomStatus.textContent = "Enter base URL first.";
+        return;
+      }
+      classroomStatus.textContent = "Probing cloud health endpoint...";
+
+      try {
+        if (window.go && window.go.main && window.go.main.App && window.go.main.App.ProbeCloudHealth) {
+          const result = await window.go.main.App.ProbeCloudHealth(baseUrl);
+          if (result?.ok) {
+            classroomStatus.textContent = `Cloud reachable (${result.status_code}) in ${result.latency_ms}ms.`;
+          } else {
+            classroomStatus.textContent = `Cloud probe failed (${result?.status_code || 0}): ${result?.message || "unknown"}`;
+          }
+          return;
+        }
+        classroomStatus.textContent = "Demo mode: health probe unavailable.";
+      } catch (err) {
+        classroomStatus.textContent = `Probe failed: ${err?.message || err}`;
+      }
+    })();
+  });
+}
 
 showAnswerBtn.addEventListener("click", () => {
   if (!activeReviewCard) {

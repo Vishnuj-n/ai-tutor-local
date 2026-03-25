@@ -18,6 +18,10 @@ export function GetStartupStatus() {
   return window['go']['main']['App']['GetStartupStatus']();
 }
 
+export function GetSyncSettings() {
+  return window['go']['main']['App']['GetSyncSettings']();
+}
+
 export function GetSyncStatus() {
   return window['go']['main']['App']['GetSyncStatus']();
 }
@@ -30,12 +34,20 @@ export function PickDocumentPath() {
   return window['go']['main']['App']['PickDocumentPath']();
 }
 
+export function ProbeCloudHealth(arg1) {
+  return window['go']['main']['App']['ProbeCloudHealth'](arg1);
+}
+
 export function RateDueCard(arg1) {
   return window['go']['main']['App']['RateDueCard'](arg1);
 }
 
 export function RunManualSync() {
   return window['go']['main']['App']['RunManualSync']();
+}
+
+export function SaveSyncSettings(arg1, arg2) {
+  return window['go']['main']['App']['SaveSyncSettings'](arg1, arg2);
 }
 
 export function StreamRAGAnswer(arg1) {
