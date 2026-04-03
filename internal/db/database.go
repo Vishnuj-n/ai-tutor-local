@@ -148,7 +148,9 @@ func (d *Database) DetectSQLiteCapabilities() (SQLiteCapabilities, error) {
 }
 
 func (d *Database) checkVirtualModule(moduleName, createSQL string) (bool, error) {
-	if err := d.DB.Exec(createSQL).Error; err != nil {
+	// Use a silent logger for the probe to avoid misleading error logs when the module is expectedly missing
+	session := d.DB.Session(&gorm.Session{Logger: d.DB.Logger.LogMode(logger.Silent)})
+	if err := session.Exec(createSQL).Error; err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "no such module: "+strings.ToLower(moduleName)) {
 			return false, nil
 		}
@@ -156,7 +158,7 @@ func (d *Database) checkVirtualModule(moduleName, createSQL string) (bool, error
 	}
 
 	dropSQL := fmt.Sprintf("DROP TABLE IF EXISTS temp.__%s_probe", moduleName)
-	if err := d.DB.Exec(dropSQL).Error; err != nil {
+	if err := session.Exec(dropSQL).Error; err != nil {
 		return false, fmt.Errorf("failed cleanup sqlite module probe %s: %w", moduleName, err)
 	}
 

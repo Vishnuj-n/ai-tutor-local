@@ -5,3 +5,6 @@ frontend/dist
 onnx/model_int8.onnx
 *.onnx
 .env
+*.db
+*.db-shm
+*.db-wal

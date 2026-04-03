@@ -18,6 +18,8 @@ export function GetSyncStatus():Promise<sync.SyncStatus>;
 
 export function IngestDocument(arg1:string,arg2:string):Promise<string>;
 
+export function JoinClass(arg1:string,arg2:string,arg3:string,arg4:string):Promise<main.JoinClassResponse>;
+
 export function PickDocumentPath():Promise<string>;
 
 export function ProbeCloudHealth(arg1:string):Promise<main.CloudHealthProbeResult>;

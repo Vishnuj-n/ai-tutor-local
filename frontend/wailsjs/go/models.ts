@@ -22,6 +22,24 @@ export namespace main {
 	        this.checked_at = source["checked_at"];
 	    }
 	}
+	export class JoinClassResponse {
+	    success: boolean;
+	    class_id?: string;
+	    class_name?: string;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new JoinClassResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.class_id = source["class_id"];
+	        this.class_name = source["class_name"];
+	        this.error = source["error"];
+	    }
+	}
 	export class ReviewCardDTO {
 	    flashcard_id: string;
 	    notebook_id: string;
