@@ -141,7 +141,9 @@ func (c *ONNXClient) EmbedText(ctx context.Context, texts []string) ([][]float32
 	if err != nil {
 		return nil, fmt.Errorf("allocate output tensor: %w", err)
 	}
-	defer outputTensor.Destroy()
+	defer func() {
+		_ = outputTensor.Destroy()
+	}()
 
 	outputs := []ort.Value{outputTensor}
 	if err := c.session.Run(inputValues, outputs); err != nil {

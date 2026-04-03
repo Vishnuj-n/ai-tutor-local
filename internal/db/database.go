@@ -165,6 +165,24 @@ func (d *Database) checkVirtualModule(moduleName, createSQL string) (bool, error
 	return true, nil
 }
 
+// IntegrityCheck verifies SQLite internal consistency.
+func (d *Database) IntegrityCheck() error {
+	type integrityRow struct {
+		Result string `gorm:"column:integrity_check"`
+	}
+
+	var row integrityRow
+	if err := d.DB.Raw("PRAGMA integrity_check").Scan(&row).Error; err != nil {
+		return fmt.Errorf("run sqlite integrity check: %w", err)
+	}
+
+	if strings.ToLower(strings.TrimSpace(row.Result)) != "ok" {
+		return fmt.Errorf("sqlite integrity check failed: %s", row.Result)
+	}
+
+	return nil
+}
+
 func stripVectorTableDDL(schemaSQL string) string {
 	lines := strings.Split(schemaSQL, "\n")
 	out := make([]string, 0, len(lines))

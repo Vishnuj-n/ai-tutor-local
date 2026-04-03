@@ -1,4 +1,5 @@
 import { EventsOff, EventsOn } from "./wailsjs/runtime/runtime.js";
+import { deriveNotebookName, validateProvider } from "./app-utils.js";
 
 const onboardingPanel = document.getElementById("onboarding-panel");
 const dashboardPanel = document.getElementById("dashboard-panel");
@@ -149,31 +150,6 @@ function renderIngestionList() {
     `;
     ingestionList.appendChild(li);
   });
-}
-
-function validateProvider(provider, baseUrl, apiKey) {
-  if (!provider || !baseUrl || !apiKey) {
-    return { ok: false, message: "Provider, base URL, and API key are required." };
-  }
-  if (!baseUrl.startsWith("http")) {
-    return { ok: false, message: "Base URL must start with http/https." };
-  }
-  if (apiKey.length < 12) {
-    return { ok: false, message: "API key looks too short." };
-  }
-  return { ok: true, message: `${provider.toUpperCase()} endpoint validated (session only).` };
-}
-
-function deriveNotebookName(filePath) {
-  const fallback = "General Notebook";
-
-  const base = (filePath.split(/[\\/]/).pop() || "").trim();
-  if (!base) {
-    return fallback;
-  }
-
-  const withoutExt = base.replace(/\.[^.]+$/, "").trim();
-  return withoutExt || fallback;
 }
 
 async function loadSyncSettingsIntoPanel() {

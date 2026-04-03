@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"ai-tutor-local/internal/apperrors"
 	"ai-tutor-local/internal/db"
 	"ai-tutor-local/internal/fsrs"
 	"ai-tutor-local/internal/ingestion"
@@ -28,6 +30,7 @@ type App struct {
 	database   *db.Database
 	startupErr error
 	vecEnabled bool
+	logger     *slog.Logger
 }
 
 type ReviewCardDTO struct {
@@ -92,12 +95,17 @@ type CloudHealthProbeResult struct {
 }
 
 func NewApp() *App {
-	return &App{}
+	return &App{logger: slog.Default().With("component", "app")}
 }
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.startupErr = a.initDatabase()
+	if a.startupErr != nil {
+		a.logger.Error("app_startup_failed", "error", a.startupErr)
+		return
+	}
+	a.logger.Info("app_startup_completed", "vec_enabled", a.vecEnabled)
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -106,6 +114,7 @@ func (a *App) shutdown(ctx context.Context) {
 		_ = a.database.Close()
 		a.database = nil
 	}
+	a.logger.Info("app_shutdown_completed")
 }
 
 func (a *App) GetStartupStatus() string {
@@ -116,11 +125,8 @@ func (a *App) GetStartupStatus() string {
 }
 
 func (a *App) GetDashboardSnapshot() (*ui.DashboardSnapshot, error) {
-	if a.startupErr != nil {
-		return nil, fmt.Errorf("app startup failed: %w", a.startupErr)
-	}
-	if a.database == nil {
-		return nil, fmt.Errorf("database is not initialized")
+	if err := a.ensureReady(); err != nil {
+		return nil, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -131,11 +137,8 @@ func (a *App) GetDashboardSnapshot() (*ui.DashboardSnapshot, error) {
 }
 
 func (a *App) GetSyncStatus() (*syncsvc.SyncStatus, error) {
-	if a.startupErr != nil {
-		return nil, fmt.Errorf("app startup failed: %w", a.startupErr)
-	}
-	if a.database == nil {
-		return nil, fmt.Errorf("database is not initialized")
+	if err := a.ensureReady(); err != nil {
+		return nil, err
 	}
 
 	svc := syncsvc.NewService(a.database)
@@ -143,11 +146,8 @@ func (a *App) GetSyncStatus() (*syncsvc.SyncStatus, error) {
 }
 
 func (a *App) RunManualSync() (string, error) {
-	if a.startupErr != nil {
-		return "", fmt.Errorf("app startup failed: %w", a.startupErr)
-	}
-	if a.database == nil {
-		return "", fmt.Errorf("database is not initialized")
+	if err := a.ensureReady(); err != nil {
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -163,11 +163,8 @@ func (a *App) RunManualSync() (string, error) {
 }
 
 func (a *App) GetSyncSettings() (*SyncSettingsDTO, error) {
-	if a.startupErr != nil {
-		return nil, fmt.Errorf("app startup failed: %w", a.startupErr)
-	}
-	if a.database == nil {
-		return nil, fmt.Errorf("database is not initialized")
+	if err := a.ensureReady(); err != nil {
+		return nil, err
 	}
 
 	queries := db.NewStudentConfigQueries(a.database.DB)
@@ -192,20 +189,17 @@ func (a *App) GetSyncSettings() (*SyncSettingsDTO, error) {
 }
 
 func (a *App) SaveSyncSettings(baseURL, classCode string) (string, error) {
-	if a.startupErr != nil {
-		return "", fmt.Errorf("app startup failed: %w", a.startupErr)
-	}
-	if a.database == nil {
-		return "", fmt.Errorf("database is not initialized")
+	if err := a.ensureReady(); err != nil {
+		return "", err
 	}
 
 	normalizedBaseURL := strings.TrimSpace(baseURL)
 	normalizedClassCode := strings.ToUpper(strings.TrimSpace(classCode))
 	if normalizedBaseURL == "" {
-		return "", fmt.Errorf("base URL is required")
+		return "", apperrors.User("SYNC_BASE_URL_REQUIRED", "base URL is required")
 	}
 	if !strings.HasPrefix(strings.ToLower(normalizedBaseURL), "http://") && !strings.HasPrefix(strings.ToLower(normalizedBaseURL), "https://") {
-		return "", fmt.Errorf("base URL must start with http:// or https://")
+		return "", apperrors.User("SYNC_BASE_URL_INVALID", "base URL must start with http:// or https://")
 	}
 
 	queries := db.NewStudentConfigQueries(a.database.DB)
@@ -221,7 +215,7 @@ func (a *App) SaveSyncSettings(baseURL, classCode string) (string, error) {
 
 func (a *App) ProbeCloudHealth(baseURL string) (*CloudHealthProbeResult, error) {
 	if a.startupErr != nil {
-		return nil, fmt.Errorf("app startup failed: %w", a.startupErr)
+		return nil, apperrors.System("APP_STARTUP_FAILED", "app startup failed", a.startupErr)
 	}
 
 	normalizedBaseURL := strings.TrimSpace(baseURL)
@@ -237,7 +231,7 @@ func (a *App) ProbeCloudHealth(baseURL string) (*CloudHealthProbeResult, error) 
 		normalizedBaseURL = strings.TrimSpace(storedBaseURL)
 	}
 	if normalizedBaseURL == "" {
-		return nil, fmt.Errorf("base URL is required")
+		return nil, apperrors.User("SYNC_BASE_URL_REQUIRED", "base URL is required")
 	}
 
 	normalizedBaseURL = strings.TrimSuffix(normalizedBaseURL, "/")
@@ -256,7 +250,9 @@ func (a *App) ProbeCloudHealth(baseURL string) (*CloudHealthProbeResult, error) 
 			CheckedAt:  time.Now().UTC().Format(time.RFC3339),
 		}, nil
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	ok := resp.StatusCode >= 200 && resp.StatusCode < 300
 	msg := "ok"
@@ -289,11 +285,8 @@ type JoinClassResponse struct {
 }
 
 func (a *App) JoinClass(studentID, name, usn, classCode string) (*JoinClassResponse, error) {
-	if a.startupErr != nil {
-		return nil, fmt.Errorf("app startup failed: %w", a.startupErr)
-	}
-	if a.database == nil {
-		return nil, fmt.Errorf("database is not initialized")
+	if err := a.ensureReady(); err != nil {
+		return nil, err
 	}
 
 	queries := db.NewStudentConfigQueries(a.database.DB)
@@ -317,13 +310,13 @@ func (a *App) JoinClass(studentID, name, usn, classCode string) (*JoinClassRespo
 	}
 
 	if reqBody.StudentID == "" {
-		return nil, fmt.Errorf("student_id is required")
+		return nil, apperrors.User("STUDENT_ID_REQUIRED", "student_id is required")
 	}
 	if reqBody.Name == "" {
-		return nil, fmt.Errorf("name is required")
+		return nil, apperrors.User("STUDENT_NAME_REQUIRED", "name is required")
 	}
 	if reqBody.ClassCode == "" {
-		return nil, fmt.Errorf("class_code is required")
+		return nil, apperrors.User("CLASS_CODE_REQUIRED", "class_code is required")
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -336,7 +329,9 @@ func (a *App) JoinClass(studentID, name, usn, classCode string) (*JoinClassRespo
 	if err != nil {
 		return nil, fmt.Errorf("POST %s: %w", joinURL, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -359,19 +354,17 @@ func (a *App) JoinClass(studentID, name, usn, classCode string) (*JoinClassRespo
 }
 
 func (a *App) IngestDocument(filePath, notebookName string) (string, error) {
-	if a.startupErr != nil {
-		return "", fmt.Errorf("app startup failed: %w", a.startupErr)
-	}
-	if a.database == nil {
-		return "", fmt.Errorf("database is not initialized")
+	if err := a.ensureReady(); err != nil {
+		return "", err
 	}
 
 	trimmedPath := strings.TrimSpace(filePath)
 	if trimmedPath == "" {
-		return "", fmt.Errorf("file path is required")
+		return "", apperrors.User("INGEST_FILE_PATH_REQUIRED", "file path is required")
 	}
+	a.logger.Info("document_ingestion_started", "file_path", trimmedPath, "notebook", notebookName)
 	if _, err := os.Stat(trimmedPath); err != nil {
-		return "", fmt.Errorf("stat file: %w", err)
+		return "", apperrors.UserWrap("INGEST_FILE_NOT_FOUND", "unable to access selected file", err)
 	}
 
 	trimmedNotebook := strings.TrimSpace(notebookName)
@@ -405,6 +398,7 @@ func (a *App) IngestDocument(filePath, notebookName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	a.logger.Info("document_ingestion_completed", "notebook_id", nbID, "document_id", doc.ID, "chunks", chunkCount, "starter_cards", cardCount)
 
 	return fmt.Sprintf("ingested %s: chunks=%d, starter_cards=%d", filepath.Base(trimmedPath), chunkCount, cardCount), nil
 }
@@ -442,13 +436,13 @@ func (a *App) PickDocumentPath() (string, error) {
 // Returns a unique event channel name that the frontend can subscribe to.
 func (a *App) StreamRAGAnswer(question string) (string, error) {
 	if a.startupErr != nil {
-		return "", fmt.Errorf("app startup failed: %w", a.startupErr)
+		return "", apperrors.System("APP_STARTUP_FAILED", "app startup failed", a.startupErr)
 	}
 	if a.ctx == nil {
-		return "", fmt.Errorf("application context unavailable")
+		return "", apperrors.System("APP_CONTEXT_UNAVAILABLE", "application context unavailable", nil)
 	}
 	if strings.TrimSpace(question) == "" {
-		return "", fmt.Errorf("question is required")
+		return "", apperrors.User("RAG_QUESTION_REQUIRED", "question is required")
 	}
 
 	eventName := "rag:stream:" + uuid.NewString()
@@ -474,11 +468,8 @@ func (a *App) StreamRAGAnswer(question string) (string, error) {
 }
 
 func (a *App) GetNextDueCard() (*ReviewCardDTO, error) {
-	if a.startupErr != nil {
-		return nil, fmt.Errorf("app startup failed: %w", a.startupErr)
-	}
-	if a.database == nil {
-		return nil, fmt.Errorf("database is not initialized")
+	if err := a.ensureReady(); err != nil {
+		return nil, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -541,21 +532,18 @@ LIMIT 1;
 }
 
 func (a *App) RateDueCard(input ReviewRateInput) (*ReviewRateResult, error) {
-	if a.startupErr != nil {
-		return nil, fmt.Errorf("app startup failed: %w", a.startupErr)
-	}
-	if a.database == nil {
-		return nil, fmt.Errorf("database is not initialized")
+	if err := a.ensureReady(); err != nil {
+		return nil, err
 	}
 
 	if strings.TrimSpace(input.FlashcardID) == "" {
-		return nil, fmt.Errorf("flashcard_id is required")
+		return nil, apperrors.User("FLASHCARD_ID_REQUIRED", "flashcard_id is required")
 	}
 	if strings.TrimSpace(input.NotebookID) == "" {
-		return nil, fmt.Errorf("notebook_id is required")
+		return nil, apperrors.User("NOTEBOOK_ID_REQUIRED", "notebook_id is required")
 	}
 	if input.Rating < fsrs.RatingAgain || input.Rating > fsrs.RatingEasy {
-		return nil, fmt.Errorf("invalid rating: %d", input.Rating)
+		return nil, apperrors.User("FSRS_RATING_INVALID", fmt.Sprintf("invalid rating: %d", input.Rating))
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -586,6 +574,7 @@ func (a *App) RateDueCard(input ReviewRateInput) (*ReviewRateResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	a.logger.Info("fsrs_calculation_completed", "flashcard_id", input.FlashcardID, "rating", input.Rating, "next_due_at", result.NextDueAt.UTC().Format(time.RFC3339))
 
 	return &ReviewRateResult{
 		NextDueAt: result.NextDueAt.UTC().Format(time.RFC3339),
@@ -595,17 +584,14 @@ func (a *App) RateDueCard(input ReviewRateInput) (*ReviewRateResult, error) {
 }
 
 func (a *App) CompleteReviewSession(input ReviewSessionSummaryInput) (string, error) {
-	if a.startupErr != nil {
-		return "", fmt.Errorf("app startup failed: %w", a.startupErr)
-	}
-	if a.database == nil {
-		return "", fmt.Errorf("database is not initialized")
+	if err := a.ensureReady(); err != nil {
+		return "", err
 	}
 	if strings.TrimSpace(input.NotebookID) == "" {
-		return "", fmt.Errorf("notebook_id is required")
+		return "", apperrors.User("NOTEBOOK_ID_REQUIRED", "notebook_id is required")
 	}
 	if input.FlashcardsReviewed < 0 || input.CorrectRecallCount < 0 || input.TotalTimeTakenMS < 0 {
-		return "", fmt.Errorf("session metrics cannot be negative")
+		return "", apperrors.User("SESSION_METRICS_INVALID", "session metrics cannot be negative")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -649,6 +635,7 @@ func (a *App) CompleteReviewSession(input ReviewSessionSummaryInput) (string, er
 	if err != nil {
 		return "", err
 	}
+	a.logger.Info("review_session_completed", "notebook_id", input.NotebookID, "flashcards_reviewed", input.FlashcardsReviewed, "emit_telemetry", input.EmitTelemetry)
 
 	return fmt.Sprintf("session completed: reviewed=%d correct=%d", input.FlashcardsReviewed, input.CorrectRecallCount), nil
 }
@@ -686,6 +673,11 @@ func (a *App) initDatabase() error {
 	if err := database.RunSchemaMigrationsWithOptions(schemaPath, db.MigrationOptions{SkipVectorTable: skipVectorTable}); err != nil {
 		_ = database.Close()
 		return fmt.Errorf("run migrations: %w", err)
+	}
+
+	if err := database.IntegrityCheck(); err != nil {
+		_ = database.Close()
+		return fmt.Errorf("sqlite integrity check: %w", err)
 	}
 
 	a.database = database
@@ -792,15 +784,20 @@ LIMIT ?;
 	return len(cards), nil
 }
 
-func envBool(key string) bool {
-	value := strings.TrimSpace(strings.ToLower(os.Getenv(key)))
-	return value == "1" || value == "true" || value == "yes"
-}
-
 func buildStarterQuestion(chapter string, topicIndex int) string {
 	trimmed := strings.TrimSpace(chapter)
 	if trimmed == "" || strings.EqualFold(trimmed, "general") {
 		return "Topic " + strconv.Itoa(topicIndex) + ": Summarize the key idea from this section."
 	}
 	return "In the section '" + trimmed + "', what is the key concept to remember?"
+}
+
+func (a *App) ensureReady() error {
+	if a.startupErr != nil {
+		return apperrors.System("APP_STARTUP_FAILED", "app startup failed", a.startupErr)
+	}
+	if a.database == nil {
+		return apperrors.System("DB_NOT_INITIALIZED", "database is not initialized", nil)
+	}
+	return nil
 }

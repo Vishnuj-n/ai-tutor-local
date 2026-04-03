@@ -1,0 +1,23 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+  skip-dirs:
+    - frontend/node_modules
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+
+linters-settings:
+  revive:
+    rules:
+      - name: exported
+        disabled: true
+
+issues:
+  exclude-use-default: false

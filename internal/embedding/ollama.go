@@ -57,7 +57,9 @@ func (c *Client) EmbedText(ctx context.Context, texts []string) ([][]float32, er
 	if err != nil {
 		return nil, fmt.Errorf("call ollama embed api: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("ollama embed api returned status: %d", resp.StatusCode)

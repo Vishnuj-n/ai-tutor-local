@@ -250,9 +250,9 @@ func backoffDuration(attempts int) time.Duration {
 		return 0
 	}
 
-	seconds := 1 << (attempts - 1)
-	if seconds > 8 {
-		seconds = 8
+	minutes := 1 << (attempts - 1)
+	if minutes > 32 {
+		minutes = 32
 	}
-	return time.Duration(seconds) * time.Second
+	return time.Duration(minutes) * time.Minute
 }

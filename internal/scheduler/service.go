@@ -63,17 +63,7 @@ LIMIT ?;
 
 	out := make([]DueCard, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, DueCard{
-			ID:         r.ID,
-			NotebookID: r.NotebookID,
-			ChunkID:    r.ChunkID,
-			Question:   r.Question,
-			Answer:     r.Answer,
-			State:      r.State,
-			DueDate:    r.DueDate,
-			Reps:       r.Reps,
-			Lapses:     r.Lapses,
-		})
+		out = append(out, DueCard(r))
 	}
 
 	return out, nil

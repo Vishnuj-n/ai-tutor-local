@@ -139,7 +139,9 @@ func runIngestionSmoke(database *db.Database, vecAvailable bool, filePath, noteb
 		if err != nil {
 			return fmt.Errorf("initialize onnx embedder: %w", err)
 		}
-		defer onnxEmbedder.Close()
+		defer func() {
+			_ = onnxEmbedder.Close()
+		}()
 		ingestionSvc.SetEmbedder(onnxEmbedder)
 	}
 
